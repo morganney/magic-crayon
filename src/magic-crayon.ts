@@ -1,5 +1,5 @@
-import { Composites, Context2D, Mode, Serializations } from './context2d'
-import type { Context2DMetaData, CustomNumberEventListener } from './context2d'
+import { Composites, Context2D, Mode, Serializations } from './context2d.js'
+import type { Context2DMetaData, CustomNumberEventListener } from './context2d.js'
 
 type MagicCrayonSerialization = 'blob' | 'dataurl'
 type MagicCrayonDrawingData = Blob | string
@@ -28,7 +28,7 @@ const COLORS = [
   '#60378d',
   '#0091d3',
   '#56af31',
-  '#9f5716'
+  '#9f5716',
 ] as const
 
 const template = document.createElement('template')
@@ -136,7 +136,7 @@ template.innerHTML = `
     </div>
     <div class="controls" part="controls">
       <div class="left">
-        <button type="button" class="tool" data-tool="pencil" aria-pressed="true">Pencil</button>
+        <button type="button" class="tool" data-tool="pencil" aria-pressed="false">Pencil</button>
         <button type="button" class="tool" data-tool="eraser" aria-pressed="false">Eraser</button>
         <div class="colors" role="group" aria-label="Pencil colors"></div>
       </div>
@@ -152,7 +152,7 @@ template.innerHTML = `
 
 const serializationToEnum = {
   blob: Serializations.BLOB,
-  dataurl: Serializations.DATA_URL
+  dataurl: Serializations.DATA_URL,
 } as const
 
 const assertSerialization = (value: string | null): MagicCrayonSerialization => {
@@ -184,6 +184,7 @@ class MagicCrayon extends HTMLElement {
   protected teardown: Array<() => void> = []
 
   protected isDrawing = false
+  protected activeMode: Mode | null = null
   protected drawingValue: MagicCrayonDrawingData | null = null
   protected serializationValue: MagicCrayonSerialization = DEFAULT_SERIALIZATION
 
@@ -255,7 +256,7 @@ class MagicCrayon extends HTMLElement {
     }
 
     this.context2d = new Context2D(context, {
-      serialization: serializationToEnum[this.serializationValue]
+      serialization: serializationToEnum[this.serializationValue],
     })
 
     this.bindUIEvents()
@@ -263,7 +264,7 @@ class MagicCrayon extends HTMLElement {
     this.bindStackListeners()
     this.bindResizeObserver()
 
-    this.syncToolState(Mode.DRAW)
+    this.setInactiveToolState()
     this.handleResize()
 
     if (this.drawingValue) {
@@ -281,9 +282,14 @@ class MagicCrayon extends HTMLElement {
     this.resizeObserver = null
     this.context2d = null
     this.isDrawing = false
+    this.activeMode = null
   }
 
-  attributeChangedCallback(name: string, _oldValue: string | null, newValue: string | null) {
+  attributeChangedCallback(
+    name: string,
+    _oldValue: string | null,
+    newValue: string | null,
+  ) {
     if (name !== 'serialization') {
       return
     }
@@ -294,7 +300,7 @@ class MagicCrayon extends HTMLElement {
   }
 
   async getDrawingData(
-    serialization: MagicCrayonSerialization = this.serializationValue
+    serialization: MagicCrayonSerialization = this.serializationValue,
   ): Promise<MagicCrayonDrawingData> {
     const mode = assertSerialization(serialization)
     const ctx = this.requireContext2D()
@@ -347,11 +353,11 @@ class MagicCrayon extends HTMLElement {
         button.className = 'swatch'
         button.setAttribute('data-color', color)
         button.setAttribute('aria-label', `Color ${color}`)
-        button.setAttribute('aria-pressed', color === COLORS[0] ? 'true' : 'false')
+        button.setAttribute('aria-pressed', 'false')
         button.style.backgroundColor = color
 
         return button
-      })
+      }),
     )
   }
 
@@ -417,9 +423,9 @@ class MagicCrayon extends HTMLElement {
             data,
             serialization: this.serializationValue,
             meta: ctx.getMetaData(),
-            timestamp: new Date().toISOString()
-          }
-        })
+            timestamp: new Date().toISOString(),
+          },
+        }),
       )
     }
 
@@ -445,6 +451,10 @@ class MagicCrayon extends HTMLElement {
 
   protected bindCanvasEvents(): void {
     const onPointerDown = (event: PointerEvent) => {
+      if (!this.activeMode) {
+        return
+      }
+
       event.preventDefault()
       this.isDrawing = true
       this.canvas.setPointerCapture(event.pointerId)
@@ -478,8 +488,12 @@ class MagicCrayon extends HTMLElement {
     this.canvas.addEventListener('pointerup', stop)
     this.canvas.addEventListener('pointercancel', stop)
 
-    this.teardown.push(() => this.canvas.removeEventListener('pointerdown', onPointerDown))
-    this.teardown.push(() => this.canvas.removeEventListener('pointermove', onPointerMove))
+    this.teardown.push(() =>
+      this.canvas.removeEventListener('pointerdown', onPointerDown),
+    )
+    this.teardown.push(() =>
+      this.canvas.removeEventListener('pointermove', onPointerMove),
+    )
     this.teardown.push(() => this.canvas.removeEventListener('pointerup', stop))
     this.teardown.push(() => this.canvas.removeEventListener('pointercancel', stop))
   }
@@ -496,9 +510,9 @@ class MagicCrayon extends HTMLElement {
           composed: true,
           detail: {
             available: size > 0,
-            size
-          }
-        })
+            size,
+          },
+        }),
       )
     }
 
@@ -512,9 +526,9 @@ class MagicCrayon extends HTMLElement {
           composed: true,
           detail: {
             available: size > 0,
-            size
-          }
-        })
+            size,
+          },
+        }),
       )
     }
 
@@ -559,6 +573,7 @@ class MagicCrayon extends HTMLElement {
     const ctx = this.requireContext2D()
     const isDraw = mode === Mode.DRAW
 
+    this.activeMode = mode
     this.pencilButton.setAttribute('aria-pressed', isDraw ? 'true' : 'false')
     this.eraserButton.setAttribute('aria-pressed', isDraw ? 'false' : 'true')
 
@@ -580,6 +595,12 @@ class MagicCrayon extends HTMLElement {
       ctx.lineWidth = 20
     }
   }
+
+  protected setInactiveToolState(): void {
+    this.activeMode = null
+    this.pencilButton.setAttribute('aria-pressed', 'false')
+    this.eraserButton.setAttribute('aria-pressed', 'false')
+  }
 }
 
 declare global {
@@ -599,5 +620,5 @@ export type {
   AvailabilityDetail,
   MagicCrayonDrawingData,
   MagicCrayonSaveDetail,
-  MagicCrayonSerialization
+  MagicCrayonSerialization,
 }

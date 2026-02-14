@@ -1,5 +1,5 @@
 const FixedStackEvents = {
-  SIZE_CHANGE: 'FixedStackSizeChange'
+  SIZE_CHANGE: 'FixedStackSizeChange',
 } as const
 
 class FixedStack<T> extends EventTarget {
@@ -22,7 +22,7 @@ class FixedStack<T> extends EventTarget {
 
   protected triggerSizeChangeEvent(): void {
     this.dispatchEvent(
-      new CustomEvent(FixedStackEvents.SIZE_CHANGE, { detail: this.size })
+      new CustomEvent(FixedStackEvents.SIZE_CHANGE, { detail: this.size }),
     )
   }
 
@@ -36,13 +36,11 @@ class FixedStack<T> extends EventTarget {
   }
 
   pop(): T {
-    let item = null
-
     if (this.items.length === 0) {
       throw new Error('Cannot pop on an empty FixedStack.')
     }
 
-    item = this.items.shift() as T
+    const item = this.items.shift() as T
     this.triggerSizeChangeEvent()
 
     return item

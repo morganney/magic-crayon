@@ -1,8 +1,9 @@
 {
   "name": "magic-crayon",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0-rc.0",
   "type": "module",
+  "description": "An HTML custom element for using a crayon to draw on a canvas and serialize as a blob or data URL.",
   "exports": {
     ".": "./src/magic-crayon.ts",
     "./defined": "./src/defined.ts"
@@ -12,19 +13,24 @@
   ],
   "scripts": {
     "check-types": "tsc --noEmit",
+    "lint": "eslint .",
     "prettier": "prettier --write .",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test:browser": "vitest"
+    "test:browser": "vitest",
+    "test:coverage": "vitest --run --coverage",
+    "prepack": "npm run build"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@eslint/js": "^9.39.1",
     "@testing-library/dom": "^10.4.1",
+    "@vitest/coverage-v8": "^4.0.18",
     "@vitest/browser-playwright": "^4.0.18",
-    "eslint": "^10.0.0",
+    "eslint": "^9.39.1",
     "eslint-plugin-wc": "^3.1.0",
     "prettier": "^3.8.1",
+    "typescript-eslint": "^8.46.1",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"

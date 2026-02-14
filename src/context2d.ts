@@ -1,20 +1,20 @@
-import { FixedStack, FixedStackEvents } from './fixedStack'
+import { FixedStack, FixedStackEvents } from './fixedStack.js'
 
 const Dimensions = {
   WIDTH: 1280,
-  HEIGHT: 720
+  HEIGHT: 720,
 } as const
 const Composites = {
   DRAW: 'source-over',
-  ERASE: 'destination-out'
+  ERASE: 'destination-out',
 } as const
 const Mode = {
   DRAW: 'draw',
-  ERASE: 'erase'
+  ERASE: 'erase',
 } as const
 const Serializations = {
   BLOB: 'blob',
-  DATA_URL: 'dataurl'
+  DATA_URL: 'dataurl',
 } as const
 
 type Mode = (typeof Mode)[keyof typeof Mode]
@@ -177,7 +177,7 @@ class Context2D {
         0,
         0,
         this.viewWidth,
-        this.viewHeight
+        this.viewHeight,
       )
     } else {
       this.raster.drawImage(canvas, 0, 0, this.viewWidth, this.viewHeight)
@@ -212,13 +212,13 @@ class Context2D {
       lineCap: this.lineCap,
       lineWidth: this.lineWidth,
       lineJoin: this.lineJoin,
-      compositing: this.compositing
+      compositing: this.compositing,
     }
   }
 
   protected copyState(
     to: CanvasRenderingContext2D,
-    from?: CanvasRenderingContext2D
+    from?: CanvasRenderingContext2D,
   ): void {
     to.strokeStyle = from?.strokeStyle ?? this.strokeStyle
     to.lineCap = from?.lineCap ?? this.lineCap
@@ -348,7 +348,7 @@ class Context2D {
 
   registerListeners(
     undo: CustomNumberEventListener,
-    redo: CustomNumberEventListener
+    redo: CustomNumberEventListener,
   ): void {
     this.undo.addEventListener(FixedStackEvents.SIZE_CHANGE, undo as EventListener)
     this.redo.addEventListener(FixedStackEvents.SIZE_CHANGE, redo as EventListener)
@@ -356,7 +356,7 @@ class Context2D {
 
   unregisterListeners(
     undo: CustomNumberEventListener,
-    redo: CustomNumberEventListener
+    redo: CustomNumberEventListener,
   ): void {
     this.undo.removeEventListener(FixedStackEvents.SIZE_CHANGE, undo as EventListener)
     this.redo.removeEventListener(FixedStackEvents.SIZE_CHANGE, redo as EventListener)
@@ -403,7 +403,7 @@ class Context2D {
     return {
       view: [this.width.toString(), this.height.toString()],
       resolution: [width.toString(), height.toString()],
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
     }
   }
 
@@ -412,7 +412,7 @@ class Context2D {
   }
 
   getData(
-    serialization: Serializations = this.serialization
+    serialization: Serializations = this.serialization,
   ): Promise<Blob> | Promise<string> {
     if (serialization === Serializations.BLOB) {
       return this.getBlob()

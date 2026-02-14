@@ -1,4 +1,4 @@
-import { MagicCrayon, TAG_NAME } from './magic-crayon'
+import { MagicCrayon, TAG_NAME } from './magic-crayon.js'
 
 if (!customElements.get(TAG_NAME)) {
   customElements.define(TAG_NAME, MagicCrayon)
