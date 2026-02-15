@@ -30,6 +30,13 @@ export default [
     },
   },
   {
-    ignores: ['dist', 'coverage', 'node_modules', 'storybook-static', '*.tgz'],
+    ignores: [
+      'dist',
+      'dist-demo',
+      'coverage',
+      'node_modules',
+      'storybook-static',
+      '*.tgz',
+    ],
   },
 ]

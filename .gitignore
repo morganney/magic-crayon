@@ -1,5 +1,6 @@
 *.tgz
 dist
+dist-demo
 node_modules
 coverage
 storybook-static

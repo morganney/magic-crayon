@@ -19,8 +19,11 @@ jobs:
         uses: actions/setup-node@v6.2.0
         with:
           node-version: '24.13.0'
+          cache: 'npm'
       - name: Install Dependencies
         run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
       - name: Save error log
         uses: actions/upload-artifact@v6.0.0
         if: ${{ failure() }}
@@ -31,6 +34,8 @@ jobs:
         run: npm pack
       - name: Lint
         run: npm run lint
+      - name: Typecheck
+        run: npm run check-types
       - name: Test
         run: npm test
       - name: Push to NPM registry

@@ -4,12 +4,19 @@
   "version": "1.0.0-rc.0",
   "type": "module",
   "description": "An HTML custom element for using a crayon to draw on a canvas and serialize as a blob or data URL.",
+  "types": "./dist/magic-crayon.d.ts",
   "exports": {
-    ".": "./src/magic-crayon.ts",
-    "./defined": "./src/defined.ts"
+    ".": {
+      "types": "./dist/magic-crayon.d.ts",
+      "import": "./dist/magic-crayon.js"
+    },
+    "./defined": {
+      "types": "./dist/defined.d.ts",
+      "import": "./dist/defined.js"
+    }
   },
   "sideEffects": [
-    "./src/defined.ts"
+    "./dist/defined.js"
   ],
   "files": [
     "dist"
@@ -18,12 +25,16 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
     "prettier": "prettier --write .",
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
+    "dev": "vite -c vite.config.ts",
+    "build": "npm run build:lib && npm run build:types",
+    "build:lib": "vite build -c vite.lib.config.ts",
+    "build:types": "tsc -p tsconfig.build.json",
+    "build:demo": "vite build -c vite.config.ts",
+    "preview": "npm run build:demo && vite preview -c vite.config.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "test:browser": "vitest",
+    "test": "vitest --run",
+    "test:watch": "vitest",
     "test:coverage": "vitest --run --coverage",
     "prepack": "npm run build"
   },
