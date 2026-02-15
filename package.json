@@ -35,7 +35,16 @@
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:coverage": "vitest --run --coverage",
+    "prepare": "husky",
     "prepack": "npm run build"
+  },
+  "lint-staged": {
+    "*.{js,mjs,cjs,ts,tsx,json,md,html,css,yml,yaml}": [
+      "prettier --write"
+    ],
+    "*.{js,mjs,cjs,ts,tsx}": [
+      "eslint --fix"
+    ]
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -46,6 +55,8 @@
     "eslint": "^9.39.1",
     "eslint-plugin-unicorn": "^61.0.2",
     "eslint-plugin-wc": "^3.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.1",
     "prettier": "^3.8.1",
     "storybook": "^10.2.8",
     "typescript": "^5.9.3",
