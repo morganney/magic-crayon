@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Composites, Context2D, Mode, Serializations } from '../src/context2d.js'
 
@@ -121,5 +121,184 @@ describe('Context2D', () => {
 
     expect(rect.width).toBe(160)
     expect(rect.height).toBe(90)
+  })
+
+  it('covers closePath via protected draw path', () => {
+    const { drawing } = setup()
+
+    drawing.startDrawing(new DOMPoint(4, 5))
+    ;(drawing as unknown as { closePath: () => void }).closePath()
+    drawing.stopDrawing()
+
+    expect(drawing.undoStackSize).toBe(1)
+  })
+
+  it('rejects when loading a data URL image fails', async () => {
+    const { drawing } = setup()
+    const originalImage = globalThis.Image
+
+    class FailingImage {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+
+      set src(_value: string) {
+        this.onerror?.()
+      }
+    }
+
+    ;(globalThis as unknown as { Image: typeof Image }).Image =
+      FailingImage as unknown as typeof Image
+
+    await expect(drawing.setData('data:image/png;base64,broken')).rejects.toThrow(
+      'Can not load data URL into canvas',
+    )
+    ;(globalThis as unknown as { Image: typeof Image }).Image = originalImage
+  })
+
+  it('rejects when FileReader load result is not a string', async () => {
+    const { drawing } = setup()
+    const originalFileReader = globalThis.FileReader
+
+    class NonStringReader extends EventTarget {
+      result: string | ArrayBuffer | null = new ArrayBuffer(8)
+
+      readAsDataURL(_blob: Blob): void {
+        this.dispatchEvent(new Event('load'))
+      }
+    }
+
+    ;(globalThis as unknown as { FileReader: typeof FileReader }).FileReader =
+      NonStringReader as unknown as typeof FileReader
+
+    await expect(drawing.setData(new Blob(['x']))).rejects.toThrow(
+      'Can not read blob as data URL',
+    )
+    ;(globalThis as unknown as { FileReader: typeof FileReader }).FileReader =
+      originalFileReader
+  })
+
+  it('rejects when FileReader emits error', async () => {
+    const { drawing } = setup()
+    const originalFileReader = globalThis.FileReader
+
+    class ErrorReader extends EventTarget {
+      result: string | ArrayBuffer | null = null
+
+      readAsDataURL(_blob: Blob): void {
+        this.dispatchEvent(new Event('error'))
+      }
+    }
+
+    ;(globalThis as unknown as { FileReader: typeof FileReader }).FileReader =
+      ErrorReader as unknown as typeof FileReader
+
+    await expect(drawing.setData(new Blob(['x']))).rejects.toThrow(
+      'Can not read blob for canvas',
+    )
+    ;(globalThis as unknown as { FileReader: typeof FileReader }).FileReader =
+      originalFileReader
+  })
+
+  it('rejects when FileReader load succeeds but image decode fails', async () => {
+    const { drawing } = setup()
+    const originalFileReader = globalThis.FileReader
+    const originalImage = globalThis.Image
+
+    class StringReader extends EventTarget {
+      result: string | ArrayBuffer | null = 'data:image/png;base64,broken'
+
+      readAsDataURL(_blob: Blob): void {
+        this.dispatchEvent(new Event('load'))
+      }
+    }
+
+    class FailingImage {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+
+      set src(_value: string) {
+        this.onerror?.()
+      }
+    }
+
+    ;(globalThis as unknown as { FileReader: typeof FileReader }).FileReader =
+      StringReader as unknown as typeof FileReader
+    ;(globalThis as unknown as { Image: typeof Image }).Image =
+      FailingImage as unknown as typeof Image
+
+    await expect(drawing.setData(new Blob(['x']))).rejects.toThrow(
+      'Can not load data URL into canvas',
+    )
+    ;(globalThis as unknown as { FileReader: typeof FileReader }).FileReader =
+      originalFileReader
+    ;(globalThis as unknown as { Image: typeof Image }).Image = originalImage
+  })
+
+  it('rejects when canvas cannot create a blob', async () => {
+    const { drawing, canvas } = setup()
+
+    Object.defineProperty(canvas, 'toBlob', {
+      configurable: true,
+      value: (callback: BlobCallback) => callback(null),
+    })
+
+    await expect(drawing.getData(Serializations.BLOB)).rejects.toThrow(
+      'Can not create blob for canvas',
+    )
+  })
+
+  it('keeps the canvas cleared after rescale', () => {
+    const { drawing, canvas } = setup()
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      throw new Error('2d context is required for test')
+    }
+
+    const getAlphaAt = (x: number, y: number) => context.getImageData(x, y, 1, 1).data[3]
+
+    drawing.lineWidth = 20
+    drawing.strokeStyle = '#000000'
+
+    drawing.startDrawing(new DOMPoint(20, 50))
+    drawing.draw(new DOMPoint(180, 50))
+    drawing.stopDrawing()
+
+    expect(getAlphaAt(100, 50)).toBeGreaterThan(0)
+
+    drawing.clear()
+
+    expect(getAlphaAt(100, 50)).toBe(0)
+
+    Object.defineProperty(canvas, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => new DOMRect(0, 0, 200, 100),
+    })
+
+    drawing.rescale()
+
+    expect(getAlphaAt(100, 50)).toBe(0)
+  })
+
+  it('refreshes snapshot after undo and redo', () => {
+    const { drawing } = setup()
+    const setSnapshotSpy = vi.spyOn(
+      drawing as unknown as { setSnapshot: () => void },
+      'setSnapshot',
+    )
+
+    drawing.startDrawing(new DOMPoint(20, 50))
+    drawing.draw(new DOMPoint(180, 50))
+    drawing.stopDrawing()
+
+    const beforeUndoCalls = setSnapshotSpy.mock.calls.length
+
+    drawing.applyUndo()
+
+    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls + 1)
+
+    drawing.applyRedo()
+
+    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls + 2)
   })
 })
