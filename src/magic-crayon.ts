@@ -1,7 +1,9 @@
 import { Composites, Context2D, Mode, Serializations } from './context2d.js'
 import type { Context2DMetaData, CustomNumberEventListener } from './context2d.js'
+import pencilSvg from '../assets/source/pencil.svg?raw'
 
 type MagicCrayonSerialization = 'blob' | 'dataurl'
+type MagicCrayonColorPicker = 'crayon' | 'swatch'
 type MagicCrayonDrawingData = Blob | string
 
 type MagicCrayonSaveDetail = {
@@ -17,6 +19,7 @@ type AvailabilityDetail = {
 }
 
 const DEFAULT_SERIALIZATION: MagicCrayonSerialization = 'blob'
+const DEFAULT_COLOR_PICKER: MagicCrayonColorPicker = 'crayon'
 const TAG_NAME = 'magic-crayon'
 
 const COLORS = [
@@ -32,6 +35,9 @@ const COLORS = [
 ] as const
 
 const template = document.createElement('template')
+const crayonIconTemplate = document.createElement('template')
+
+crayonIconTemplate.innerHTML = pencilSvg
 
 template.innerHTML = `
   <style>
@@ -112,14 +118,45 @@ template.innerHTML = `
     }
 
     .swatch {
+      cursor: pointer;
+      color: inherit;
+    }
+
+    .colors[data-picker='crayon'] .swatch {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      width: 16px;
+      height: 44px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      transform-origin: bottom center;
+      transition: transform 0.15s ease;
+    }
+
+    .colors[data-picker='crayon'] .swatch > svg {
+      width: 16px;
+      height: auto;
+      display: block;
+    }
+
+    .colors[data-picker='crayon'] .swatch[aria-pressed='true'] {
+      transform: translateY(-8px);
+    }
+
+    .colors[data-picker='swatch'] .swatch {
       width: 20px;
       height: 20px;
       border-radius: 50%;
       border: 2px solid #dddddd;
       padding: 0;
+      background: transparent;
     }
 
-    .swatch[aria-pressed='true'] {
+    .colors[data-picker='swatch'] .swatch[aria-pressed='true'] {
       border-color: #000000;
       transform: scale(1.1);
     }
@@ -163,8 +200,16 @@ const assertSerialization = (value: string | null): MagicCrayonSerialization => 
   throw new TypeError('serialization must be either "blob" or "dataurl".')
 }
 
+const assertColorPicker = (value: string | null): MagicCrayonColorPicker => {
+  if (value === 'crayon' || value === 'swatch') {
+    return value
+  }
+
+  throw new TypeError('color-picker must be either "crayon" or "swatch".')
+}
+
 class MagicCrayon extends HTMLElement {
-  static observedAttributes = ['serialization']
+  static observedAttributes = ['serialization', 'color-picker']
 
   protected readonly root: ShadowRoot
   protected readonly wrap: HTMLDivElement
@@ -185,8 +230,10 @@ class MagicCrayon extends HTMLElement {
 
   protected isDrawing = false
   protected activeMode: Mode | null = null
+  protected selectedColor: string | null = null
   protected drawingValue: MagicCrayonDrawingData | null = null
   protected serializationValue: MagicCrayonSerialization = DEFAULT_SERIALIZATION
+  protected colorPickerValue: MagicCrayonColorPicker = DEFAULT_COLOR_PICKER
 
   constructor() {
     super()
@@ -222,9 +269,27 @@ class MagicCrayon extends HTMLElement {
     }
   }
 
+  get colorPicker(): MagicCrayonColorPicker {
+    return this.colorPickerValue
+  }
+
+  set colorPicker(value: MagicCrayonColorPicker) {
+    const next = assertColorPicker(value)
+
+    this.colorPickerValue = next
+
+    if (this.getAttribute('color-picker') !== next) {
+      this.setAttribute('color-picker', next)
+    }
+  }
+
   setAttribute(qualifiedName: string, value: string): void {
     if (qualifiedName === 'serialization') {
       assertSerialization(value)
+    }
+
+    if (qualifiedName === 'color-picker') {
+      assertColorPicker(value)
     }
 
     super.setAttribute(qualifiedName, value)
@@ -247,6 +312,12 @@ class MagicCrayon extends HTMLElement {
       this.setAttribute('serialization', DEFAULT_SERIALIZATION)
     } else {
       this.serializationValue = assertSerialization(this.getAttribute('serialization'))
+    }
+
+    if (!this.hasAttribute('color-picker')) {
+      this.setAttribute('color-picker', DEFAULT_COLOR_PICKER)
+    } else {
+      this.colorPickerValue = assertColorPicker(this.getAttribute('color-picker'))
     }
 
     const context = this.canvas.getContext('2d')
@@ -290,12 +361,21 @@ class MagicCrayon extends HTMLElement {
     _oldValue: string | null,
     newValue: string | null,
   ) {
-    if (name !== 'serialization') {
+    if (name === 'serialization') {
+      if (newValue === 'blob' || newValue === 'dataurl') {
+        this.serializationValue = newValue
+      }
+
       return
     }
 
-    if (newValue === 'blob' || newValue === 'dataurl') {
-      this.serializationValue = newValue
+    if (name === 'color-picker') {
+      if (newValue === 'crayon' || newValue === 'swatch') {
+        this.colorPickerValue = newValue
+        this.renderColorButtons()
+      }
+
+      return
     }
   }
 
@@ -345,16 +425,35 @@ class MagicCrayon extends HTMLElement {
   }
 
   protected renderColorButtons(): void {
+    this.colors.dataset.picker = this.colorPickerValue
+
     this.colors.replaceChildren(
       ...COLORS.map(color => {
         const button = document.createElement('button')
+        const icon = crayonIconTemplate.content.firstElementChild?.cloneNode(
+          true,
+        ) as SVGElement | null
 
         button.type = 'button'
         button.className = 'swatch'
         button.setAttribute('data-color', color)
         button.setAttribute('aria-label', `Color ${color}`)
-        button.setAttribute('aria-pressed', 'false')
-        button.style.backgroundColor = color
+        button.setAttribute(
+          'aria-pressed',
+          this.selectedColor === color ? 'true' : 'false',
+        )
+        button.style.color = color
+
+        if (this.colorPickerValue === 'swatch') {
+          button.style.backgroundColor = color
+          return button
+        }
+
+        if (icon) {
+          icon.setAttribute('aria-hidden', 'true')
+          icon.setAttribute('focusable', 'false')
+          button.append(icon)
+        }
 
         return button
       }),
@@ -376,18 +475,21 @@ class MagicCrayon extends HTMLElement {
     }
 
     const onColor = (event: Event) => {
-      const target = event.currentTarget as HTMLButtonElement
-      const color = target.dataset.color
+      const target = event.target as HTMLElement
+      const button = target.closest<HTMLButtonElement>('.swatch')
+      const color = button?.dataset.color
 
       if (!color || !this.context2d) {
         return
       }
 
+      this.selectedColor = color
+
       this.syncToolState(Mode.DRAW)
       this.context2d.strokeStyle = color
 
       for (const item of this.colors.querySelectorAll<HTMLButtonElement>('.swatch')) {
-        item.setAttribute('aria-pressed', item === target ? 'true' : 'false')
+        item.setAttribute('aria-pressed', item === button ? 'true' : 'false')
       }
     }
 
@@ -436,10 +538,7 @@ class MagicCrayon extends HTMLElement {
     this.clearButton.addEventListener('click', onClear)
     this.saveButton.addEventListener('click', onSave)
 
-    for (const swatch of this.colors.querySelectorAll<HTMLButtonElement>('.swatch')) {
-      swatch.addEventListener('click', onColor)
-      this.teardown.push(() => swatch.removeEventListener('click', onColor))
-    }
+    this.colors.addEventListener('click', onColor)
 
     this.teardown.push(() => this.pencilButton.removeEventListener('click', onTool))
     this.teardown.push(() => this.eraserButton.removeEventListener('click', onTool))
@@ -447,6 +546,7 @@ class MagicCrayon extends HTMLElement {
     this.teardown.push(() => this.redoButton.removeEventListener('click', onRedo))
     this.teardown.push(() => this.clearButton.removeEventListener('click', onClear))
     this.teardown.push(() => this.saveButton.removeEventListener('click', onSave))
+    this.teardown.push(() => this.colors.removeEventListener('click', onColor))
   }
 
   protected bindCanvasEvents(): void {
@@ -578,16 +678,14 @@ class MagicCrayon extends HTMLElement {
     this.eraserButton.setAttribute('aria-pressed', isDraw ? 'false' : 'true')
 
     if (isDraw) {
-      const active =
-        this.colors.querySelector<HTMLButtonElement>('.swatch[aria-pressed="true"]') ??
-        this.colors.querySelector<HTMLButtonElement>('.swatch')
+      const active = this.selectedColor
 
       ctx.pencilMode = Mode.DRAW
       ctx.compositing = Composites.DRAW
       ctx.lineWidth = 5
 
-      if (active?.dataset.color) {
-        ctx.strokeStyle = active.dataset.color
+      if (active) {
+        ctx.strokeStyle = active
       }
     } else {
       ctx.pencilMode = Mode.ERASE
@@ -618,6 +716,7 @@ declare global {
 export { MagicCrayon, TAG_NAME }
 export type {
   AvailabilityDetail,
+  MagicCrayonColorPicker,
   MagicCrayonDrawingData,
   MagicCrayonSaveDetail,
   MagicCrayonSerialization,

@@ -33,6 +33,31 @@ describe('magic-crayon', () => {
     expect(() => {
       node.setAttribute('serialization', 'invalid')
     }).toThrow(TypeError)
+
+    expect(() => {
+      node.setAttribute('color-picker', 'invalid')
+    }).toThrow(TypeError)
+  })
+
+  it('defaults to crayon picker and allows switching to swatch', () => {
+    const node = createMagicCrayon()
+    const colors = node.shadowRoot?.querySelector('.colors')
+    const crayonIcon = node.shadowRoot?.querySelector('.swatch svg')
+
+    expect(node.colorPicker).toBe('crayon')
+    expect(node.getAttribute('color-picker')).toBe('crayon')
+    expect(colors?.getAttribute('data-picker')).toBe('crayon')
+    expect(crayonIcon).toBeTruthy()
+
+    node.colorPicker = 'swatch'
+
+    const swatchIcon = node.shadowRoot?.querySelector('.swatch svg')
+    const firstSwatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
+
+    expect(node.getAttribute('color-picker')).toBe('swatch')
+    expect(colors?.getAttribute('data-picker')).toBe('swatch')
+    expect(swatchIcon).toBeFalsy()
+    expect(firstSwatch?.style.backgroundColor).toBeTruthy()
   })
 
   it('dispatches save event with payload detail', async () => {
@@ -116,10 +141,14 @@ describe('magic-crayon', () => {
     const node = createMagicCrayon()
     const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
     const undo = node.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="undo"]')
+    const crayons = node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.swatch')
+    const firstCrayonIcon = node.shadowRoot?.querySelector('.swatch svg')
     let undoEventCount = 0
 
     expect(canvas).toBeTruthy()
     expect(undo).toBeTruthy()
+    expect(crayons?.length).toBeGreaterThan(0)
+    expect(firstCrayonIcon).toBeTruthy()
 
     node.addEventListener('undoavailabilitychange', () => {
       undoEventCount += 1
@@ -262,5 +291,23 @@ describe('magic-crayon', () => {
     expect(() => {
       ;(node as unknown as { disconnectedCallback: () => void }).disconnectedCallback()
     }).not.toThrow()
+  })
+
+  it('preserves selected color while switching picker modes', () => {
+    const node = createMagicCrayon()
+    const swatches = node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.swatch')
+    const target = swatches?.item(1)
+
+    expect(target).toBeTruthy()
+
+    target?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(target?.getAttribute('aria-pressed')).toBe('true')
+
+    node.colorPicker = 'swatch'
+
+    const switched = node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.swatch')
+    const switchedTarget = switched?.item(1)
+
+    expect(switchedTarget?.getAttribute('aria-pressed')).toBe('true')
   })
 })

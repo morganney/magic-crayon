@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { FixedStack, FixedStackEvents } from '../src/fixedStack.js'
+import { FixedStack, FixedStackEvents } from '../src/fixed-stack.js'
 
 describe('FixedStack', () => {
   it('throws for invalid max size', () => {

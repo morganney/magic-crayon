@@ -1,4 +1,4 @@
-import { FixedStack, FixedStackEvents } from './fixedStack.js'
+import { FixedStack, FixedStackEvents } from './fixed-stack.js'
 
 const Dimensions = {
   WIDTH: 1280,
