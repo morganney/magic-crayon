@@ -44,6 +44,7 @@ template.innerHTML = `
     :host {
       display: block;
       width: 100%;
+      height: 100%;
       contain: content;
       container-type: inline-size;
       container-name: magic-crayon;
@@ -52,11 +53,21 @@ template.innerHTML = `
     .wrap {
       position: relative;
       width: 100%;
+      height: 100%;
       max-width: 100%;
       overflow: hidden;
       display: grid;
-      grid-template-rows: auto 60px;
+      grid-template-rows: minmax(0, 1fr) auto;
       gap: 0;
+    }
+
+    .canvas-stage {
+      position: relative;
+      min-height: 0;
+      display: grid;
+      align-items: center;
+      justify-items: stretch;
+      background: #f2f2f2;
     }
 
     .canvas-wrap {
@@ -105,6 +116,20 @@ template.innerHTML = `
 
     .menu-toggle {
       display: none;
+    }
+
+    .ratio-note {
+      display: none;
+      margin: 0;
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      right: 8px;
+      text-align: center;
+      color: #666666;
+      font-size: 12px;
+      line-height: 1.3;
+      pointer-events: none;
     }
 
     button {
@@ -205,9 +230,11 @@ template.innerHTML = `
         grid-template-columns: 1fr auto;
         grid-template-areas: 'menu save';
         align-items: center;
+        align-content: start;
         column-gap: 8px;
         row-gap: 0;
         padding: 8px;
+        height: auto;
       }
 
       .wrap[data-menu-open='true'] .controls {
@@ -240,6 +267,10 @@ template.innerHTML = `
         background-color: #ffffff;
       }
 
+      .ratio-note {
+        display: block;
+      }
+
       .wrap[data-menu-open='true'] .panel {
         display: flex;
       }
@@ -267,8 +298,13 @@ template.innerHTML = `
     }
   </style>
   <div class="wrap">
-    <div class="canvas-wrap">
-      <canvas part="canvas"></canvas>
+    <div class="canvas-stage">
+      <p class="ratio-note" aria-live="polite">
+        Drawing area uses a fixed 16:9 aspect ratio for consistent cross-device output.
+      </p>
+      <div class="canvas-wrap">
+        <canvas part="canvas"></canvas>
+      </div>
     </div>
     <div class="controls" part="controls">
       <button type="button" class="menu-toggle" data-action="menu" aria-expanded="false">Tools</button>
