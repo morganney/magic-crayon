@@ -349,4 +349,105 @@ describe('magic-crayon', () => {
 
     expect(pencil?.getAttribute('aria-pressed')).toBe('false')
   })
+
+  it('allows toggling an active tool off', () => {
+    const node = createMagicCrayon()
+    const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const undo = node.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="undo"]')
+    let undoEventCount = 0
+
+    expect(canvas && pencil && undo).toBeTruthy()
+
+    node.addEventListener('undoavailabilitychange', () => {
+      undoEventCount += 1
+    })
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+
+    canvas?.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        pointerId: 77,
+        clientX: 16,
+        clientY: 16,
+      }),
+    )
+    canvas?.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        pointerId: 77,
+        clientX: 32,
+        clientY: 32,
+      }),
+    )
+    canvas?.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        pointerId: 77,
+        clientX: 32,
+        clientY: 32,
+      }),
+    )
+
+    expect(undoEventCount).toBe(0)
+    expect(undo?.disabled).toBe(true)
+  })
+
+  it('allows toggling drawing off by clicking the active swatch', () => {
+    const node = createMagicCrayon()
+    const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const swatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
+    const undo = node.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="undo"]')
+    let undoEventCount = 0
+
+    expect(canvas && pencil && swatch && undo).toBeTruthy()
+
+    node.addEventListener('undoavailabilitychange', () => {
+      undoEventCount += 1
+    })
+
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(swatch?.getAttribute('aria-pressed')).toBe('true')
+
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    expect(swatch?.getAttribute('aria-pressed')).toBe('false')
+
+    canvas?.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        pointerId: 78,
+        clientX: 20,
+        clientY: 20,
+      }),
+    )
+    canvas?.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        pointerId: 78,
+        clientX: 34,
+        clientY: 34,
+      }),
+    )
+    canvas?.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        pointerId: 78,
+        clientX: 34,
+        clientY: 34,
+      }),
+    )
+
+    expect(undoEventCount).toBe(0)
+    expect(undo?.disabled).toBe(true)
+  })
 })

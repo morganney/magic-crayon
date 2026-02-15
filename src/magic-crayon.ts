@@ -466,10 +466,20 @@ class MagicCrayon extends HTMLElement {
       const tool = target.dataset.tool
 
       if (tool === 'eraser') {
+        if (this.activeMode === Mode.ERASE) {
+          this.setInactiveToolState()
+          return
+        }
+
         this.syncToolState(Mode.ERASE)
       }
 
       if (tool === 'pencil') {
+        if (this.activeMode === Mode.DRAW) {
+          this.setInactiveToolState()
+          return
+        }
+
         this.syncToolState(Mode.DRAW)
       }
     }
@@ -480,6 +490,16 @@ class MagicCrayon extends HTMLElement {
       const color = button?.dataset.color
 
       if (!color || !this.context2d) {
+        return
+      }
+
+      if (this.selectedColor === color && this.activeMode === Mode.DRAW) {
+        this.setInactiveToolState()
+
+        for (const item of this.colors.querySelectorAll<HTMLButtonElement>('.swatch')) {
+          item.setAttribute('aria-pressed', 'false')
+        }
+
         return
       }
 
