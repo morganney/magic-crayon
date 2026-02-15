@@ -4,6 +4,7 @@ import pencilSvg from '../assets/source/pencil.svg?raw'
 
 type MagicCrayonSerialization = 'blob' | 'dataurl'
 type MagicCrayonColorPicker = 'crayon' | 'swatch'
+type MagicCrayonSelectedCrayon = 'full' | 'clipped'
 type MagicCrayonDrawingData = Blob | string
 
 type MagicCrayonSaveDetail = {
@@ -20,6 +21,7 @@ type AvailabilityDetail = {
 
 const DEFAULT_SERIALIZATION: MagicCrayonSerialization = 'blob'
 const DEFAULT_COLOR_PICKER: MagicCrayonColorPicker = 'crayon'
+const DEFAULT_SELECTED_CRAYON: MagicCrayonSelectedCrayon = 'full'
 const TAG_NAME = 'magic-crayon'
 
 const COLORS = [
@@ -44,7 +46,6 @@ template.innerHTML = `
     :host {
       display: block;
       width: 100%;
-      height: 100%;
       contain: content;
       container-type: inline-size;
       container-name: magic-crayon;
@@ -53,21 +54,11 @@ template.innerHTML = `
     .wrap {
       position: relative;
       width: 100%;
-      height: 100%;
       max-width: 100%;
       overflow: hidden;
       display: grid;
-      grid-template-rows: minmax(0, 1fr) auto;
+      grid-template-rows: auto 60px;
       gap: 0;
-    }
-
-    .canvas-stage {
-      position: relative;
-      min-height: 0;
-      display: grid;
-      align-items: center;
-      justify-items: stretch;
-      background: #f2f2f2;
     }
 
     .canvas-wrap {
@@ -118,20 +109,6 @@ template.innerHTML = `
       display: none;
     }
 
-    .ratio-note {
-      display: none;
-      margin: 0;
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      right: 8px;
-      text-align: center;
-      color: #666666;
-      font-size: 12px;
-      line-height: 1.3;
-      pointer-events: none;
-    }
-
     button {
       border-width: 2px;
       border-style: solid;
@@ -180,6 +157,7 @@ template.innerHTML = `
       width: 16px;
       height: 44px;
       padding: 0;
+      overflow: hidden;
       border: 0;
       border-radius: 0;
       background: transparent;
@@ -196,6 +174,11 @@ template.innerHTML = `
 
     .colors[data-picker='crayon'] .swatch[aria-pressed='true'] {
       transform: translateY(-8px);
+    }
+
+    .colors[data-picker='crayon'][data-selected-crayon='full'] .swatch[aria-pressed='true'] {
+      overflow: visible;
+      z-index: 1;
     }
 
     .colors[data-picker='swatch'] .swatch {
@@ -230,11 +213,9 @@ template.innerHTML = `
         grid-template-columns: 1fr auto;
         grid-template-areas: 'menu save';
         align-items: center;
-        align-content: start;
         column-gap: 8px;
         row-gap: 0;
         padding: 8px;
-        height: auto;
       }
 
       .wrap[data-menu-open='true'] .controls {
@@ -267,10 +248,6 @@ template.innerHTML = `
         background-color: #ffffff;
       }
 
-      .ratio-note {
-        display: block;
-      }
-
       .wrap[data-menu-open='true'] .panel {
         display: flex;
       }
@@ -287,6 +264,10 @@ template.innerHTML = `
         padding-bottom: 2px;
       }
 
+      .colors[data-picker='crayon'][data-selected-crayon='full'] {
+        overflow: visible;
+      }
+
       .actions {
         flex-wrap: wrap;
       }
@@ -298,13 +279,8 @@ template.innerHTML = `
     }
   </style>
   <div class="wrap">
-    <div class="canvas-stage">
-      <p class="ratio-note" aria-live="polite">
-        Drawing area uses a fixed 16:9 aspect ratio for consistent cross-device output.
-      </p>
-      <div class="canvas-wrap">
-        <canvas part="canvas"></canvas>
-      </div>
+    <div class="canvas-wrap">
+      <canvas part="canvas"></canvas>
     </div>
     <div class="controls" part="controls">
       <button type="button" class="menu-toggle" data-action="menu" aria-expanded="false">Tools</button>
@@ -346,8 +322,16 @@ const assertColorPicker = (value: string | null): MagicCrayonColorPicker => {
   throw new TypeError('color-picker must be either "crayon" or "swatch".')
 }
 
+const assertSelectedCrayon = (value: string | null): MagicCrayonSelectedCrayon => {
+  if (value === 'full' || value === 'clipped') {
+    return value
+  }
+
+  throw new TypeError('selected-crayon must be either "full" or "clipped".')
+}
+
 class MagicCrayon extends HTMLElement {
-  static observedAttributes = ['serialization', 'color-picker']
+  static observedAttributes = ['serialization', 'color-picker', 'selected-crayon']
 
   protected readonly root: ShadowRoot
   protected readonly wrap: HTMLDivElement
@@ -373,6 +357,7 @@ class MagicCrayon extends HTMLElement {
   protected drawingValue: MagicCrayonDrawingData | null = null
   protected serializationValue: MagicCrayonSerialization = DEFAULT_SERIALIZATION
   protected colorPickerValue: MagicCrayonColorPicker = DEFAULT_COLOR_PICKER
+  protected selectedCrayonValue: MagicCrayonSelectedCrayon = DEFAULT_SELECTED_CRAYON
 
   constructor() {
     super()
@@ -423,6 +408,21 @@ class MagicCrayon extends HTMLElement {
     }
   }
 
+  get selectedCrayon(): MagicCrayonSelectedCrayon {
+    return this.selectedCrayonValue
+  }
+
+  set selectedCrayon(value: MagicCrayonSelectedCrayon) {
+    const next = assertSelectedCrayon(value)
+
+    this.selectedCrayonValue = next
+    this.colors.dataset.selectedCrayon = next
+
+    if (this.getAttribute('selected-crayon') !== next) {
+      this.setAttribute('selected-crayon', next)
+    }
+  }
+
   setAttribute(qualifiedName: string, value: string): void {
     if (qualifiedName === 'serialization') {
       assertSerialization(value)
@@ -430,6 +430,10 @@ class MagicCrayon extends HTMLElement {
 
     if (qualifiedName === 'color-picker') {
       assertColorPicker(value)
+    }
+
+    if (qualifiedName === 'selected-crayon') {
+      assertSelectedCrayon(value)
     }
 
     super.setAttribute(qualifiedName, value)
@@ -459,6 +463,16 @@ class MagicCrayon extends HTMLElement {
     } else {
       this.colorPickerValue = assertColorPicker(this.getAttribute('color-picker'))
     }
+
+    if (!this.hasAttribute('selected-crayon')) {
+      this.setAttribute('selected-crayon', DEFAULT_SELECTED_CRAYON)
+    } else {
+      this.selectedCrayonValue = assertSelectedCrayon(
+        this.getAttribute('selected-crayon'),
+      )
+    }
+
+    this.colors.dataset.selectedCrayon = this.selectedCrayonValue
 
     const context = this.canvas.getContext('2d')
 
@@ -518,6 +532,15 @@ class MagicCrayon extends HTMLElement {
 
       return
     }
+
+    if (name === 'selected-crayon') {
+      if (newValue === 'full' || newValue === 'clipped') {
+        this.selectedCrayonValue = newValue
+        this.colors.dataset.selectedCrayon = this.selectedCrayonValue
+      }
+
+      return
+    }
   }
 
   async getDrawingData(
@@ -567,6 +590,7 @@ class MagicCrayon extends HTMLElement {
 
   protected renderColorButtons(): void {
     this.colors.dataset.picker = this.colorPickerValue
+    this.colors.dataset.selectedCrayon = this.selectedCrayonValue
 
     this.colors.replaceChildren(
       ...COLORS.map(color => {
@@ -891,5 +915,6 @@ export type {
   MagicCrayonColorPicker,
   MagicCrayonDrawingData,
   MagicCrayonSaveDetail,
+  MagicCrayonSelectedCrayon,
   MagicCrayonSerialization,
 }

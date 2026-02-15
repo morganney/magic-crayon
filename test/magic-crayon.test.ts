@@ -37,6 +37,24 @@ describe('magic-crayon', () => {
     expect(() => {
       node.setAttribute('color-picker', 'invalid')
     }).toThrow(TypeError)
+
+    expect(() => {
+      node.setAttribute('selected-crayon', 'invalid')
+    }).toThrow(TypeError)
+  })
+
+  it('defaults selected crayon visibility to full and allows clipped mode', () => {
+    const node = createMagicCrayon()
+    const colors = node.shadowRoot?.querySelector('.colors')
+
+    expect(node.selectedCrayon).toBe('full')
+    expect(node.getAttribute('selected-crayon')).toBe('full')
+    expect(colors?.getAttribute('data-selected-crayon')).toBe('full')
+
+    node.selectedCrayon = 'clipped'
+
+    expect(node.getAttribute('selected-crayon')).toBe('clipped')
+    expect(colors?.getAttribute('data-selected-crayon')).toBe('clipped')
   })
 
   it('defaults to crayon picker and allows switching to swatch', () => {
