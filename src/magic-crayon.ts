@@ -87,7 +87,7 @@ template.innerHTML = `
       height: 100%;
       border: none;
       touch-action: none;
-      cursor: crosshair;
+      cursor: default;
       background-color: #ffffff;
     }
 
@@ -938,21 +938,23 @@ class MagicCrayon extends HTMLElement {
     this.eraserButton.setAttribute('aria-pressed', isDraw ? 'false' : 'true')
 
     if (isDraw) {
-      const active = this.selectedColor
+      const active = this.selectedColor ?? COLORS[0]
+
+      if (!this.selectedColor) {
+        this.selectedColor = active
+      }
 
       ctx.pencilMode = Mode.DRAW
       ctx.compositing = Composites.DRAW
       ctx.lineWidth = 5
-
-      if (active) {
-        ctx.strokeStyle = active
-      }
+      ctx.strokeStyle = active
     } else {
       ctx.pencilMode = Mode.ERASE
       ctx.compositing = Composites.ERASE
       ctx.lineWidth = 20
     }
 
+    this.syncCanvasCursor()
     this.syncColorSelectionState()
   }
 
@@ -960,7 +962,12 @@ class MagicCrayon extends HTMLElement {
     this.activeMode = null
     this.pencilButton.setAttribute('aria-pressed', 'false')
     this.eraserButton.setAttribute('aria-pressed', 'false')
+    this.syncCanvasCursor()
     this.syncColorSelectionState()
+  }
+
+  protected syncCanvasCursor(): void {
+    this.canvas.style.cursor = this.activeMode ? 'crosshair' : 'default'
   }
 
   protected setMenuOpen(open: boolean): void {

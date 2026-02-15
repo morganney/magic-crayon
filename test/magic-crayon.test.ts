@@ -517,6 +517,48 @@ describe('magic-crayon', () => {
     expect(swatch?.getAttribute('aria-pressed')).toBe('true')
   })
 
+  it('keeps canvas cursor in sync with active drawing mode', () => {
+    const node = createMagicCrayon()
+    const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
+
+    expect(canvas && pencil && eraser).toBeTruthy()
+    expect(canvas?.style.cursor).toBe('default')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(canvas?.style.cursor).toBe('crosshair')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(canvas?.style.cursor).toBe('default')
+
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(canvas?.style.cursor).toBe('crosshair')
+
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(canvas?.style.cursor).toBe('default')
+  })
+
+  it('selects default black swatch when entering pencil mode from fresh state', () => {
+    const node = createMagicCrayon()
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const swatches = node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.swatch')
+    const blackSwatch = swatches?.item(0)
+    const yellowSwatch = swatches?.item(1)
+
+    expect(pencil && blackSwatch && yellowSwatch).toBeTruthy()
+    expect(blackSwatch?.getAttribute('aria-pressed')).toBe('false')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(blackSwatch?.getAttribute('aria-pressed')).toBe('true')
+    expect(yellowSwatch?.getAttribute('aria-pressed')).toBe('false')
+  })
+
   it('toggles tools menu and keeps it open until toggled again', () => {
     const node = createMagicCrayon()
     const wrap = node.shadowRoot?.querySelector<HTMLElement>('.wrap')
