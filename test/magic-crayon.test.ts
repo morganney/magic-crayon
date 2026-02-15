@@ -37,6 +37,42 @@ describe('magic-crayon', () => {
     expect(() => {
       node.setAttribute('color-picker', 'invalid')
     }).toThrow(TypeError)
+
+    expect(() => {
+      node.setAttribute('selected-crayon', 'invalid')
+    }).toThrow(TypeError)
+
+    expect(() => {
+      node.setAttribute('boundary', 'invalid')
+    }).toThrow(TypeError)
+  })
+
+  it('defaults selected crayon visibility to full and allows clipped mode', () => {
+    const node = createMagicCrayon()
+    const colors = node.shadowRoot?.querySelector('.colors')
+
+    expect(node.selectedCrayon).toBe('full')
+    expect(node.getAttribute('selected-crayon')).toBe('full')
+    expect(colors?.getAttribute('data-selected-crayon')).toBe('full')
+
+    node.selectedCrayon = 'clipped'
+
+    expect(node.getAttribute('selected-crayon')).toBe('clipped')
+    expect(colors?.getAttribute('data-selected-crayon')).toBe('clipped')
+  })
+
+  it('defaults boundary cue to on and allows turning it off', () => {
+    const node = createMagicCrayon()
+    const wrap = node.shadowRoot?.querySelector('.wrap')
+
+    expect(node.boundary).toBe('on')
+    expect(node.getAttribute('boundary')).toBe('on')
+    expect(wrap?.getAttribute('data-boundary')).toBe('on')
+
+    node.boundary = 'off'
+
+    expect(node.getAttribute('boundary')).toBe('off')
+    expect(wrap?.getAttribute('data-boundary')).toBe('off')
   })
 
   it('defaults to crayon picker and allows switching to swatch', () => {
@@ -449,5 +485,104 @@ describe('magic-crayon', () => {
 
     expect(undoEventCount).toBe(0)
     expect(undo?.disabled).toBe(true)
+  })
+
+  it('keeps swatch pressed state in sync when toggling draw mode', () => {
+    const node = createMagicCrayon()
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const swatches = node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.swatch')
+    const swatch = swatches?.item(1)
+
+    expect(pencil && swatch).toBeTruthy()
+
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(swatch?.getAttribute('aria-pressed')).toBe('true')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    expect(swatch?.getAttribute('aria-pressed')).toBe('false')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(swatch?.getAttribute('aria-pressed')).toBe('true')
+
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    expect(swatch?.getAttribute('aria-pressed')).toBe('false')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(swatch?.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('keeps canvas cursor in sync with active drawing mode', () => {
+    const node = createMagicCrayon()
+    const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
+
+    expect(canvas && pencil && eraser).toBeTruthy()
+    expect(canvas?.style.cursor).toBe('default')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(canvas?.style.cursor).toBe('crosshair')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(canvas?.style.cursor).toBe('default')
+
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(canvas?.style.cursor).toBe('crosshair')
+
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(canvas?.style.cursor).toBe('default')
+  })
+
+  it('selects default black swatch when entering pencil mode from fresh state', () => {
+    const node = createMagicCrayon()
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const swatches = node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.swatch')
+    const blackSwatch = swatches?.item(0)
+    const yellowSwatch = swatches?.item(1)
+
+    expect(pencil && blackSwatch && yellowSwatch).toBeTruthy()
+    expect(blackSwatch?.getAttribute('aria-pressed')).toBe('false')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(blackSwatch?.getAttribute('aria-pressed')).toBe('true')
+    expect(yellowSwatch?.getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('toggles tools menu and keeps it open until toggled again', () => {
+    const node = createMagicCrayon()
+    const wrap = node.shadowRoot?.querySelector<HTMLElement>('.wrap')
+    const menu = node.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="menu"]')
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+
+    expect(wrap && menu && pencil).toBeTruthy()
+    expect(wrap?.dataset.menuOpen).toBe('false')
+    expect(menu?.getAttribute('aria-expanded')).toBe('false')
+
+    menu?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(wrap?.dataset.menuOpen).toBe('true')
+    expect(menu?.getAttribute('aria-expanded')).toBe('true')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(wrap?.dataset.menuOpen).toBe('true')
+    expect(menu?.getAttribute('aria-expanded')).toBe('true')
+
+    menu?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(wrap?.dataset.menuOpen).toBe('false')
+    expect(menu?.getAttribute('aria-expanded')).toBe('false')
   })
 })
