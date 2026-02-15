@@ -328,6 +328,7 @@ class Context2D {
 
     undo.context.globalCompositeOperation = origCompositeOp
     this.restore()
+    this.setSnapshot()
   }
 
   applyRedo(): void {
@@ -344,6 +345,7 @@ class Context2D {
 
     redo.context.globalCompositeOperation = origCompositeOp
     this.restore()
+    this.setSnapshot()
   }
 
   registerListeners(
@@ -395,6 +397,7 @@ class Context2D {
 
   clear(): void {
     this.clearRect()
+    this.setSnapshot()
   }
 
   getMetaData(): Context2DMetaData {

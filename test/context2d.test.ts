@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Composites, Context2D, Mode, Serializations } from '../src/context2d.js'
 
@@ -245,5 +245,60 @@ describe('Context2D', () => {
     await expect(drawing.getData(Serializations.BLOB)).rejects.toThrow(
       'Can not create blob for canvas',
     )
+  })
+
+  it('keeps the canvas cleared after rescale', () => {
+    const { drawing, canvas } = setup()
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      throw new Error('2d context is required for test')
+    }
+
+    const getAlphaAt = (x: number, y: number) => context.getImageData(x, y, 1, 1).data[3]
+
+    drawing.lineWidth = 20
+    drawing.strokeStyle = '#000000'
+
+    drawing.startDrawing(new DOMPoint(20, 50))
+    drawing.draw(new DOMPoint(180, 50))
+    drawing.stopDrawing()
+
+    expect(getAlphaAt(100, 50)).toBeGreaterThan(0)
+
+    drawing.clear()
+
+    expect(getAlphaAt(100, 50)).toBe(0)
+
+    Object.defineProperty(canvas, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => new DOMRect(0, 0, 200, 100),
+    })
+
+    drawing.rescale()
+
+    expect(getAlphaAt(100, 50)).toBe(0)
+  })
+
+  it('refreshes snapshot after undo and redo', () => {
+    const { drawing } = setup()
+    const setSnapshotSpy = vi.spyOn(
+      drawing as unknown as { setSnapshot: () => void },
+      'setSnapshot',
+    )
+
+    drawing.startDrawing(new DOMPoint(20, 50))
+    drawing.draw(new DOMPoint(180, 50))
+    drawing.stopDrawing()
+
+    const beforeUndoCalls = setSnapshotSpy.mock.calls.length
+
+    drawing.applyUndo()
+
+    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls + 1)
+
+    drawing.applyRedo()
+
+    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls + 2)
   })
 })
