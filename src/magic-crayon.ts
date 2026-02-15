@@ -24,6 +24,8 @@ const DEFAULT_SERIALIZATION: MagicCrayonSerialization = 'blob'
 const DEFAULT_COLOR_PICKER: MagicCrayonColorPicker = 'crayon'
 const DEFAULT_SELECTED_CRAYON: MagicCrayonSelectedCrayon = 'full'
 const DEFAULT_BOUNDARY: MagicCrayonBoundary = 'on'
+const DEFAULT_STROKE_WIDTH = 5
+const DEFAULT_ERASER_SCALE = 1
 const TAG_NAME = 'magic-crayon'
 
 const COLORS = [
@@ -356,12 +358,34 @@ const assertBoundary = (value: string | null): MagicCrayonBoundary => {
   throw new TypeError('boundary must be either "on" or "off".')
 }
 
+const assertPositiveNumber = (value: number, name: string): number => {
+  if (Number.isFinite(value) && value > 0) {
+    return value
+  }
+
+  throw new TypeError(`${name} must be a positive number.`)
+}
+
+const assertStrokeWidth = (value: number): number =>
+  assertPositiveNumber(value, 'stroke-width')
+
+const assertEraserScale = (value: number): number =>
+  assertPositiveNumber(value, 'eraser-scale')
+
+const parseStrokeWidth = (value: string | null): number =>
+  assertStrokeWidth(Number(value))
+
+const parseEraserScale = (value: string | null): number =>
+  assertEraserScale(Number(value))
+
 class MagicCrayon extends HTMLElement {
   static observedAttributes = [
     'serialization',
     'color-picker',
     'selected-crayon',
     'boundary',
+    'stroke-width',
+    'eraser-scale',
   ]
 
   protected readonly root: ShadowRoot
@@ -390,6 +414,8 @@ class MagicCrayon extends HTMLElement {
   protected colorPickerValue: MagicCrayonColorPicker = DEFAULT_COLOR_PICKER
   protected selectedCrayonValue: MagicCrayonSelectedCrayon = DEFAULT_SELECTED_CRAYON
   protected boundaryValue: MagicCrayonBoundary = DEFAULT_BOUNDARY
+  protected strokeWidthValue: number = DEFAULT_STROKE_WIDTH
+  protected eraserScaleValue: number = DEFAULT_ERASER_SCALE
 
   constructor() {
     super()
@@ -470,6 +496,36 @@ class MagicCrayon extends HTMLElement {
     }
   }
 
+  get strokeWidth(): number {
+    return this.strokeWidthValue
+  }
+
+  set strokeWidth(value: number) {
+    const next = assertStrokeWidth(value)
+
+    this.strokeWidthValue = next
+    this.syncLineWidthForActiveMode()
+
+    if (this.getAttribute('stroke-width') !== String(next)) {
+      this.setAttribute('stroke-width', String(next))
+    }
+  }
+
+  get eraserScale(): number {
+    return this.eraserScaleValue
+  }
+
+  set eraserScale(value: number) {
+    const next = assertEraserScale(value)
+
+    this.eraserScaleValue = next
+    this.syncLineWidthForActiveMode()
+
+    if (this.getAttribute('eraser-scale') !== String(next)) {
+      this.setAttribute('eraser-scale', String(next))
+    }
+  }
+
   setAttribute(qualifiedName: string, value: string): void {
     if (qualifiedName === 'serialization') {
       assertSerialization(value)
@@ -485,6 +541,14 @@ class MagicCrayon extends HTMLElement {
 
     if (qualifiedName === 'boundary') {
       assertBoundary(value)
+    }
+
+    if (qualifiedName === 'stroke-width') {
+      parseStrokeWidth(value)
+    }
+
+    if (qualifiedName === 'eraser-scale') {
+      parseEraserScale(value)
     }
 
     super.setAttribute(qualifiedName, value)
@@ -527,6 +591,18 @@ class MagicCrayon extends HTMLElement {
       this.setAttribute('boundary', DEFAULT_BOUNDARY)
     } else {
       this.boundaryValue = assertBoundary(this.getAttribute('boundary'))
+    }
+
+    if (!this.hasAttribute('stroke-width')) {
+      this.setAttribute('stroke-width', String(DEFAULT_STROKE_WIDTH))
+    } else {
+      this.strokeWidthValue = parseStrokeWidth(this.getAttribute('stroke-width'))
+    }
+
+    if (!this.hasAttribute('eraser-scale')) {
+      this.setAttribute('eraser-scale', String(DEFAULT_ERASER_SCALE))
+    } else {
+      this.eraserScaleValue = parseEraserScale(this.getAttribute('eraser-scale'))
     }
 
     this.wrap.dataset.boundary = this.boundaryValue
@@ -605,6 +681,20 @@ class MagicCrayon extends HTMLElement {
         this.boundaryValue = newValue
         this.wrap.dataset.boundary = this.boundaryValue
       }
+
+      return
+    }
+
+    if (name === 'stroke-width') {
+      this.strokeWidthValue = parseStrokeWidth(newValue)
+      this.syncLineWidthForActiveMode()
+
+      return
+    }
+
+    if (name === 'eraser-scale') {
+      this.eraserScaleValue = parseEraserScale(newValue)
+      this.syncLineWidthForActiveMode()
 
       return
     }
@@ -945,12 +1035,12 @@ class MagicCrayon extends HTMLElement {
 
       ctx.pencilMode = Mode.DRAW
       ctx.compositing = Composites.DRAW
-      ctx.lineWidth = 5
+      ctx.lineWidth = this.strokeWidthValue
       ctx.strokeStyle = active
     } else {
       ctx.pencilMode = Mode.ERASE
       ctx.compositing = Composites.ERASE
-      ctx.lineWidth = 20
+      ctx.lineWidth = this.strokeWidthValue * this.eraserScaleValue
     }
 
     this.syncCanvasCursor()
@@ -972,6 +1062,21 @@ class MagicCrayon extends HTMLElement {
   protected setMenuOpen(open: boolean): void {
     this.wrap.dataset.menuOpen = open ? 'true' : 'false'
     this.menuButton.setAttribute('aria-expanded', open ? 'true' : 'false')
+  }
+
+  protected syncLineWidthForActiveMode(): void {
+    const ctx = this.context2d
+
+    if (!ctx || !this.activeMode) {
+      return
+    }
+
+    if (this.activeMode === Mode.DRAW) {
+      ctx.lineWidth = this.strokeWidthValue
+      return
+    }
+
+    ctx.lineWidth = this.strokeWidthValue * this.eraserScaleValue
   }
 }
 

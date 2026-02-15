@@ -45,6 +45,14 @@ describe('magic-crayon', () => {
     expect(() => {
       node.setAttribute('boundary', 'invalid')
     }).toThrow(TypeError)
+
+    expect(() => {
+      node.setAttribute('stroke-width', '0')
+    }).toThrow(TypeError)
+
+    expect(() => {
+      node.setAttribute('eraser-scale', '0')
+    }).toThrow(TypeError)
   })
 
   it('defaults selected crayon visibility to full and allows clipped mode', () => {
@@ -73,6 +81,33 @@ describe('magic-crayon', () => {
 
     expect(node.getAttribute('boundary')).toBe('off')
     expect(wrap?.getAttribute('data-boundary')).toBe('off')
+  })
+
+  it('defaults stroke-width and eraser-scale and applies mode-specific line width', () => {
+    const node = createMagicCrayon()
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
+    const context2d = (node as unknown as { context2d?: { lineWidth: number } }).context2d
+
+    expect(pencil && eraser && context2d).toBeTruthy()
+    expect(node.strokeWidth).toBe(5)
+    expect(node.eraserScale).toBe(1)
+    expect(node.getAttribute('stroke-width')).toBe('5')
+    expect(node.getAttribute('eraser-scale')).toBe('1')
+
+    node.strokeWidth = 6
+    node.eraserScale = 1.5
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(context2d?.lineWidth).toBe(6)
+
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(context2d?.lineWidth).toBe(9)
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(context2d?.lineWidth).toBe(6)
   })
 
   it('defaults to crayon picker and allows switching to swatch', () => {
