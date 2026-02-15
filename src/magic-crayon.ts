@@ -45,6 +45,8 @@ template.innerHTML = `
       display: block;
       width: 100%;
       contain: content;
+      container-type: inline-size;
+      container-name: magic-crayon;
     }
 
     .wrap {
@@ -76,20 +78,33 @@ template.innerHTML = `
     .controls {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
       gap: 16px;
       padding: 8px 16px;
       min-width: 0;
       background-color: #f7f7f7;
     }
 
+    .panel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-width: 0;
+      flex: 1;
+    }
+
     .left,
-    .right,
+    .actions,
     .colors {
       display: flex;
       align-items: center;
       gap: 8px;
       min-width: 0;
+    }
+
+    .menu-toggle {
+      display: none;
     }
 
     button {
@@ -117,9 +132,20 @@ template.innerHTML = `
       border-color: #000000;
     }
 
+    .menu-toggle[aria-expanded='true'] {
+      background-color: #000000;
+      border-color: #000000;
+    }
+
     .swatch {
       cursor: pointer;
       color: inherit;
+      flex: 0 0 auto;
+    }
+
+    .tool,
+    .actions > button {
+      flex: 0 0 auto;
     }
 
     .colors[data-picker='crayon'] .swatch {
@@ -157,8 +183,8 @@ template.innerHTML = `
     }
 
     .colors[data-picker='swatch'] .swatch[aria-pressed='true'] {
-      border-color: #000000;
-      transform: scale(1.1);
+      border-color: #0b63ce;
+      box-shadow: inset 0 0 0 2px #0b63ce;
     }
 
     .clear {
@@ -166,23 +192,99 @@ template.innerHTML = `
       border-color: #d7282f;
       background-color: #ffffff;
     }
+
+    @container magic-crayon (max-width: 768px) {
+      .wrap {
+        grid-template-rows: auto auto;
+        overflow-x: hidden;
+        overflow-y: visible;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-areas: 'menu save';
+        align-items: center;
+        column-gap: 8px;
+        row-gap: 0;
+        padding: 8px;
+      }
+
+      .wrap[data-menu-open='true'] .controls {
+        grid-template-areas:
+          'menu save'
+          'panel panel';
+        row-gap: 8px;
+      }
+
+      .menu-toggle {
+        display: inline-flex;
+        grid-area: menu;
+        justify-self: start;
+      }
+
+      .save {
+        grid-area: save;
+        justify-self: end;
+      }
+
+      .panel {
+        grid-area: panel;
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        border: 1px solid #dddddd;
+        border-radius: 12px;
+        padding: 8px;
+        background-color: #ffffff;
+      }
+
+      .wrap[data-menu-open='true'] .panel {
+        display: flex;
+      }
+
+      .left {
+        flex-wrap: nowrap;
+      }
+
+      .colors {
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+        padding-bottom: 2px;
+      }
+
+      .actions {
+        flex-wrap: wrap;
+      }
+
+      .actions > button {
+        flex: 1 1 calc(33.333% - 6px);
+        min-width: 84px;
+      }
+    }
   </style>
   <div class="wrap">
     <div class="canvas-wrap">
       <canvas part="canvas"></canvas>
     </div>
     <div class="controls" part="controls">
-      <div class="left">
-        <button type="button" class="tool" data-tool="pencil" aria-pressed="false">Pencil</button>
-        <button type="button" class="tool" data-tool="eraser" aria-pressed="false">Eraser</button>
-        <div class="colors" role="group" aria-label="Pencil colors"></div>
+      <button type="button" class="menu-toggle" data-action="menu" aria-expanded="false">Tools</button>
+      <div class="panel">
+        <div class="left">
+          <button type="button" class="tool" data-tool="pencil" aria-pressed="false">Pencil</button>
+          <button type="button" class="tool" data-tool="eraser" aria-pressed="false">Eraser</button>
+          <div class="colors" role="group" aria-label="Pencil colors"></div>
+        </div>
+        <div class="actions">
+          <button type="button" class="clear" data-action="clear">Clear</button>
+          <button type="button" data-action="undo" disabled>Undo</button>
+          <button type="button" data-action="redo" disabled>Redo</button>
+        </div>
       </div>
-      <div class="right">
-        <button type="button" class="clear" data-action="clear">Clear</button>
-        <button type="button" data-action="undo" disabled>Undo</button>
-        <button type="button" data-action="redo" disabled>Redo</button>
-        <button type="button" data-action="save">Save</button>
-      </div>
+      <button type="button" class="save" data-action="save">Save</button>
     </div>
   </div>
 `
@@ -216,6 +318,7 @@ class MagicCrayon extends HTMLElement {
   protected readonly canvasWrap: HTMLDivElement
   protected readonly canvas: HTMLCanvasElement
   protected readonly controls: HTMLDivElement
+  protected readonly menuButton: HTMLButtonElement
   protected readonly colors: HTMLDivElement
   protected readonly undoButton: HTMLButtonElement
   protected readonly redoButton: HTMLButtonElement
@@ -244,6 +347,7 @@ class MagicCrayon extends HTMLElement {
     this.canvasWrap = this.queryNode('.canvas-wrap')
     this.canvas = this.queryNode('canvas')
     this.controls = this.queryNode('.controls')
+    this.menuButton = this.queryNode('[data-action="menu"]')
     this.colors = this.queryNode('.colors')
     this.undoButton = this.queryNode('[data-action="undo"]')
     this.redoButton = this.queryNode('[data-action="redo"]')
@@ -336,6 +440,7 @@ class MagicCrayon extends HTMLElement {
     this.bindResizeObserver()
 
     this.setInactiveToolState()
+    this.setMenuOpen(false)
     this.handleResize()
 
     if (this.drawingValue) {
@@ -461,6 +566,10 @@ class MagicCrayon extends HTMLElement {
   }
 
   protected bindUIEvents(): void {
+    const onMenu = () => {
+      this.setMenuOpen(this.wrap.dataset.menuOpen !== 'true')
+    }
+
     const onTool = (event: Event) => {
       const target = event.currentTarget as HTMLButtonElement
       const tool = target.dataset.tool
@@ -551,6 +660,7 @@ class MagicCrayon extends HTMLElement {
       )
     }
 
+    this.menuButton.addEventListener('click', onMenu)
     this.pencilButton.addEventListener('click', onTool)
     this.eraserButton.addEventListener('click', onTool)
     this.undoButton.addEventListener('click', onUndo)
@@ -560,6 +670,7 @@ class MagicCrayon extends HTMLElement {
 
     this.colors.addEventListener('click', onColor)
 
+    this.teardown.push(() => this.menuButton.removeEventListener('click', onMenu))
     this.teardown.push(() => this.pencilButton.removeEventListener('click', onTool))
     this.teardown.push(() => this.eraserButton.removeEventListener('click', onTool))
     this.teardown.push(() => this.undoButton.removeEventListener('click', onUndo))
@@ -718,6 +829,11 @@ class MagicCrayon extends HTMLElement {
     this.activeMode = null
     this.pencilButton.setAttribute('aria-pressed', 'false')
     this.eraserButton.setAttribute('aria-pressed', 'false')
+  }
+
+  protected setMenuOpen(open: boolean): void {
+    this.wrap.dataset.menuOpen = open ? 'true' : 'false'
+    this.menuButton.setAttribute('aria-expanded', open ? 'true' : 'false')
   }
 }
 

@@ -450,4 +450,31 @@ describe('magic-crayon', () => {
     expect(undoEventCount).toBe(0)
     expect(undo?.disabled).toBe(true)
   })
+
+  it('toggles tools menu and keeps it open until toggled again', () => {
+    const node = createMagicCrayon()
+    const wrap = node.shadowRoot?.querySelector<HTMLElement>('.wrap')
+    const menu = node.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="menu"]')
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+
+    expect(wrap && menu && pencil).toBeTruthy()
+    expect(wrap?.dataset.menuOpen).toBe('false')
+    expect(menu?.getAttribute('aria-expanded')).toBe('false')
+
+    menu?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(wrap?.dataset.menuOpen).toBe('true')
+    expect(menu?.getAttribute('aria-expanded')).toBe('true')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(wrap?.dataset.menuOpen).toBe('true')
+    expect(menu?.getAttribute('aria-expanded')).toBe('true')
+
+    menu?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(wrap?.dataset.menuOpen).toBe('false')
+    expect(menu?.getAttribute('aria-expanded')).toBe('false')
+  })
 })
