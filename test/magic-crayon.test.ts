@@ -41,6 +41,10 @@ describe('magic-crayon', () => {
     expect(() => {
       node.setAttribute('selected-crayon', 'invalid')
     }).toThrow(TypeError)
+
+    expect(() => {
+      node.setAttribute('boundary', 'invalid')
+    }).toThrow(TypeError)
   })
 
   it('defaults selected crayon visibility to full and allows clipped mode', () => {
@@ -55,6 +59,20 @@ describe('magic-crayon', () => {
 
     expect(node.getAttribute('selected-crayon')).toBe('clipped')
     expect(colors?.getAttribute('data-selected-crayon')).toBe('clipped')
+  })
+
+  it('defaults boundary cue to on and allows turning it off', () => {
+    const node = createMagicCrayon()
+    const wrap = node.shadowRoot?.querySelector('.wrap')
+
+    expect(node.boundary).toBe('on')
+    expect(node.getAttribute('boundary')).toBe('on')
+    expect(wrap?.getAttribute('data-boundary')).toBe('on')
+
+    node.boundary = 'off'
+
+    expect(node.getAttribute('boundary')).toBe('off')
+    expect(wrap?.getAttribute('data-boundary')).toBe('off')
   })
 
   it('defaults to crayon picker and allows switching to swatch', () => {

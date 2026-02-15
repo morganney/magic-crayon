@@ -5,6 +5,7 @@ import pencilSvg from '../assets/source/pencil.svg?raw'
 type MagicCrayonSerialization = 'blob' | 'dataurl'
 type MagicCrayonColorPicker = 'crayon' | 'swatch'
 type MagicCrayonSelectedCrayon = 'full' | 'clipped'
+type MagicCrayonBoundary = 'on' | 'off'
 type MagicCrayonDrawingData = Blob | string
 
 type MagicCrayonSaveDetail = {
@@ -22,6 +23,7 @@ type AvailabilityDetail = {
 const DEFAULT_SERIALIZATION: MagicCrayonSerialization = 'blob'
 const DEFAULT_COLOR_PICKER: MagicCrayonColorPicker = 'crayon'
 const DEFAULT_SELECTED_CRAYON: MagicCrayonSelectedCrayon = 'full'
+const DEFAULT_BOUNDARY: MagicCrayonBoundary = 'on'
 const TAG_NAME = 'magic-crayon'
 
 const COLORS = [
@@ -46,6 +48,11 @@ template.innerHTML = `
     :host {
       display: block;
       width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
       contain: content;
       container-type: inline-size;
       container-name: magic-crayon;
@@ -55,10 +62,17 @@ template.innerHTML = `
       position: relative;
       width: 100%;
       max-width: 100%;
+      margin-top: auto;
       overflow: hidden;
       display: grid;
       grid-template-rows: auto 60px;
       gap: 0;
+    }
+
+    .wrap[data-boundary='on'] {
+      border: 1px solid #c9c9c9;
+      border-radius: 16px;
+      background-color: #e9e9e9;
     }
 
     .canvas-wrap {
@@ -335,8 +349,21 @@ const assertSelectedCrayon = (value: string | null): MagicCrayonSelectedCrayon =
   throw new TypeError('selected-crayon must be either "full" or "clipped".')
 }
 
+const assertBoundary = (value: string | null): MagicCrayonBoundary => {
+  if (value === 'on' || value === 'off') {
+    return value
+  }
+
+  throw new TypeError('boundary must be either "on" or "off".')
+}
+
 class MagicCrayon extends HTMLElement {
-  static observedAttributes = ['serialization', 'color-picker', 'selected-crayon']
+  static observedAttributes = [
+    'serialization',
+    'color-picker',
+    'selected-crayon',
+    'boundary',
+  ]
 
   protected readonly root: ShadowRoot
   protected readonly wrap: HTMLDivElement
@@ -363,6 +390,7 @@ class MagicCrayon extends HTMLElement {
   protected serializationValue: MagicCrayonSerialization = DEFAULT_SERIALIZATION
   protected colorPickerValue: MagicCrayonColorPicker = DEFAULT_COLOR_PICKER
   protected selectedCrayonValue: MagicCrayonSelectedCrayon = DEFAULT_SELECTED_CRAYON
+  protected boundaryValue: MagicCrayonBoundary = DEFAULT_BOUNDARY
 
   constructor() {
     super()
@@ -428,6 +456,21 @@ class MagicCrayon extends HTMLElement {
     }
   }
 
+  get boundary(): MagicCrayonBoundary {
+    return this.boundaryValue
+  }
+
+  set boundary(value: MagicCrayonBoundary) {
+    const next = assertBoundary(value)
+
+    this.boundaryValue = next
+    this.wrap.dataset.boundary = next
+
+    if (this.getAttribute('boundary') !== next) {
+      this.setAttribute('boundary', next)
+    }
+  }
+
   setAttribute(qualifiedName: string, value: string): void {
     if (qualifiedName === 'serialization') {
       assertSerialization(value)
@@ -439,6 +482,10 @@ class MagicCrayon extends HTMLElement {
 
     if (qualifiedName === 'selected-crayon') {
       assertSelectedCrayon(value)
+    }
+
+    if (qualifiedName === 'boundary') {
+      assertBoundary(value)
     }
 
     super.setAttribute(qualifiedName, value)
@@ -477,6 +524,13 @@ class MagicCrayon extends HTMLElement {
       )
     }
 
+    if (!this.hasAttribute('boundary')) {
+      this.setAttribute('boundary', DEFAULT_BOUNDARY)
+    } else {
+      this.boundaryValue = assertBoundary(this.getAttribute('boundary'))
+    }
+
+    this.wrap.dataset.boundary = this.boundaryValue
     this.colors.dataset.selectedCrayon = this.selectedCrayonValue
 
     const context = this.canvas.getContext('2d')
@@ -542,6 +596,15 @@ class MagicCrayon extends HTMLElement {
       if (newValue === 'full' || newValue === 'clipped') {
         this.selectedCrayonValue = newValue
         this.colors.dataset.selectedCrayon = this.selectedCrayonValue
+      }
+
+      return
+    }
+
+    if (name === 'boundary') {
+      if (newValue === 'on' || newValue === 'off') {
+        this.boundaryValue = newValue
+        this.wrap.dataset.boundary = this.boundaryValue
       }
 
       return
@@ -917,6 +980,7 @@ declare global {
 export { MagicCrayon, TAG_NAME }
 export type {
   AvailabilityDetail,
+  MagicCrayonBoundary,
   MagicCrayonColorPicker,
   MagicCrayonDrawingData,
   MagicCrayonSaveDetail,

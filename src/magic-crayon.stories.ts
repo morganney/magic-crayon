@@ -7,6 +7,7 @@ type StoryArgs = {
   serialization: 'blob' | 'dataurl'
   colorPicker: 'crayon' | 'swatch'
   selectedCrayon: 'full' | 'clipped'
+  boundary: 'on' | 'off'
   hostHeight: number
   onSave: (detail: unknown) => void
 }
@@ -25,6 +26,7 @@ const meta: Meta<StoryArgs> = {
     serialization: 'blob',
     colorPicker: 'crayon',
     selectedCrayon: 'full',
+    boundary: 'on',
     hostHeight: 640,
     onSave: fn(),
   },
@@ -45,6 +47,12 @@ const meta: Meta<StoryArgs> = {
       control: { type: 'inline-radio' },
       options: ['full', 'clipped'],
     },
+    boundary: {
+      name: 'boundary',
+      description: 'Toggle the default outer visual boundary cue.',
+      control: { type: 'inline-radio' },
+      options: ['on', 'off'],
+    },
     hostHeight: {
       control: { type: 'range', min: 360, max: 1000, step: 10 },
     },
@@ -56,7 +64,14 @@ const meta: Meta<StoryArgs> = {
       },
     },
   },
-  render: ({ serialization, colorPicker, selectedCrayon, hostHeight, onSave }) => {
+  render: ({
+    serialization,
+    colorPicker,
+    selectedCrayon,
+    boundary,
+    hostHeight,
+    onSave,
+  }) => {
     const host = document.createElement('div')
     const element = document.createElement('magic-crayon')
 
@@ -69,6 +84,7 @@ const meta: Meta<StoryArgs> = {
     element.setAttribute('serialization', serialization)
     element.setAttribute('color-picker', colorPicker)
     element.setAttribute('selected-crayon', selectedCrayon)
+    element.setAttribute('boundary', boundary)
     element.addEventListener('save', event => {
       const customEvent = event as CustomEvent
 
