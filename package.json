@@ -1,6 +1,5 @@
 {
   "name": "magic-crayon",
-  "private": true,
   "version": "1.0.0-rc.0",
   "type": "module",
   "description": "An HTML custom element for using a crayon to draw on a canvas and serialize as a blob or data URL.",
