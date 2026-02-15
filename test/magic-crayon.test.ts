@@ -187,9 +187,11 @@ describe('magic-crayon', () => {
     const node = document.createElement('magic-crayon') as MagicCrayon
 
     node.setAttribute('serialization', 'dataurl')
+    node.setAttribute('color-picker', 'swatch')
     node.drawing = ONE_PIXEL_PNG
 
     expect(node.serialization).toBe('dataurl')
+    expect(node.colorPicker).toBe('swatch')
     expect(node.drawing).toBe(ONE_PIXEL_PNG)
 
     document.body.append(node)
@@ -199,6 +201,24 @@ describe('magic-crayon', () => {
 
     expect(typeof data).toBe('string')
     node.clearDrawingData()
+  })
+
+  it('throws when connected callback cannot get a 2d context', () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+
+    HTMLCanvasElement.prototype.getContext = vi.fn(
+      () => null,
+    ) as typeof originalGetContext
+
+    try {
+      const node = document.createElement('magic-crayon') as MagicCrayon
+
+      expect(() => {
+        ;(node as unknown as { connectedCallback: () => void }).connectedCallback()
+      }).toThrow('Canvas 2D context could not be created.')
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+    }
   })
 
   it('throws for API usage before connect and safely handles non-serialization attribute changes', async () => {
@@ -214,6 +234,11 @@ describe('magic-crayon', () => {
     expect(() => {
       ;(node as unknown as { handleResize: () => void }).handleResize()
     }).not.toThrow()
+    expect(() => {
+      ;(node as unknown as { queryNode: (selector: string) => Element }).queryNode(
+        '.does-not-exist',
+      )
+    }).toThrow('Required node not found')
   })
 
   it('supports eraser, clear, undo, redo, and pointer capture release paths', async () => {
@@ -309,5 +334,19 @@ describe('magic-crayon', () => {
     const switchedTarget = switched?.item(1)
 
     expect(switchedTarget?.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('ignores color clicks that do not target a swatch', () => {
+    const node = createMagicCrayon()
+    const colors = node.shadowRoot?.querySelector<HTMLElement>('.colors')
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+
+    expect(colors).toBeTruthy()
+    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+
+    colors?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
   })
 })

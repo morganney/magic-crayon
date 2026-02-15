@@ -100,38 +100,6 @@ All events bubble and are composed.
 
 Type declarations are published with the package and mapped via `exports`.
 
-## Local Development
+## Development
 
-```bash
-npm install
-npm run dev
-```
-
-## Build
-
-Library build (for npm packaging):
-
-```bash
-npm run build
-```
-
-Demo build:
-
-```bash
-npm run build:demo
-npm run preview
-```
-
-## Testing
-
-```bash
-npm test
-npm run test:coverage
-```
-
-## Storybook
-
-```bash
-npm run storybook
-npm run build-storybook
-```
+For local development, build, testing, and Storybook workflows, see [docs/development.md](docs/development.md).
