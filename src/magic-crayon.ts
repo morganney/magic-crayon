@@ -172,7 +172,7 @@ template.innerHTML = `
       display: block;
     }
 
-    .colors[data-picker='crayon'] .swatch[aria-pressed='true'] {
+    .colors[data-picker='crayon'][data-selected-crayon='clipped'] .swatch[aria-pressed='true'] {
       transform: translateY(-8px);
     }
 
@@ -265,7 +265,12 @@ template.innerHTML = `
       }
 
       .colors[data-picker='crayon'][data-selected-crayon='full'] {
-        overflow: visible;
+        align-items: flex-end;
+      }
+
+      .colors[data-picker='crayon'][data-selected-crayon='full']:has(.swatch[aria-pressed='true']) {
+        padding-top: 96px;
+        margin-top: -96px;
       }
 
       .actions {

@@ -6,6 +6,7 @@ import './defined.js'
 type StoryArgs = {
   serialization: 'blob' | 'dataurl'
   colorPicker: 'crayon' | 'swatch'
+  selectedCrayon: 'full' | 'clipped'
   hostHeight: number
   onSave: (detail: unknown) => void
 }
@@ -23,6 +24,7 @@ const meta: Meta<StoryArgs> = {
   args: {
     serialization: 'blob',
     colorPicker: 'crayon',
+    selectedCrayon: 'full',
     hostHeight: 640,
     onSave: fn(),
   },
@@ -37,6 +39,12 @@ const meta: Meta<StoryArgs> = {
       control: { type: 'inline-radio' },
       options: ['crayon', 'swatch'],
     },
+    selectedCrayon: {
+      name: 'selected-crayon',
+      description: 'Control selected crayon visibility in crayon picker mode.',
+      control: { type: 'inline-radio' },
+      options: ['full', 'clipped'],
+    },
     hostHeight: {
       control: { type: 'range', min: 360, max: 1000, step: 10 },
     },
@@ -48,17 +56,19 @@ const meta: Meta<StoryArgs> = {
       },
     },
   },
-  render: ({ serialization, colorPicker, hostHeight, onSave }) => {
+  render: ({ serialization, colorPicker, selectedCrayon, hostHeight, onSave }) => {
     const host = document.createElement('div')
     const element = document.createElement('magic-crayon')
 
     host.style.height = `${hostHeight}px`
     host.style.width = '100%'
     host.style.boxSizing = 'border-box'
-    host.style.padding = '12px'
+    host.style.margin = '0'
+    host.style.padding = '0'
 
     element.setAttribute('serialization', serialization)
     element.setAttribute('color-picker', colorPicker)
+    element.setAttribute('selected-crayon', selectedCrayon)
     element.addEventListener('save', event => {
       const customEvent = event as CustomEvent
 

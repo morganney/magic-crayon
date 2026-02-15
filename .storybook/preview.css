@@ -1,0 +1,7 @@
+html,
+body,
+#storybook-root,
+#root {
+  margin: 0;
+  padding: 0;
+}
