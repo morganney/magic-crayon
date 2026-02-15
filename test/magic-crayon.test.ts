@@ -487,6 +487,36 @@ describe('magic-crayon', () => {
     expect(undo?.disabled).toBe(true)
   })
 
+  it('keeps swatch pressed state in sync when toggling draw mode', () => {
+    const node = createMagicCrayon()
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const swatches = node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.swatch')
+    const swatch = swatches?.item(1)
+
+    expect(pencil && swatch).toBeTruthy()
+
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(swatch?.getAttribute('aria-pressed')).toBe('true')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    expect(swatch?.getAttribute('aria-pressed')).toBe('false')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(swatch?.getAttribute('aria-pressed')).toBe('true')
+
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    expect(swatch?.getAttribute('aria-pressed')).toBe('false')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(swatch?.getAttribute('aria-pressed')).toBe('true')
+  })
+
   it('toggles tools menu and keeps it open until toggled again', () => {
     const node = createMagicCrayon()
     const wrap = node.shadowRoot?.querySelector<HTMLElement>('.wrap')

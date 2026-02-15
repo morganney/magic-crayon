@@ -673,7 +673,9 @@ class MagicCrayon extends HTMLElement {
         button.setAttribute('aria-label', `Color ${color}`)
         button.setAttribute(
           'aria-pressed',
-          this.selectedColor === color ? 'true' : 'false',
+          this.activeMode === Mode.DRAW && this.selectedColor === color
+            ? 'true'
+            : 'false',
         )
         button.style.color = color
 
@@ -691,6 +693,15 @@ class MagicCrayon extends HTMLElement {
         return button
       }),
     )
+  }
+
+  protected syncColorSelectionState(): void {
+    for (const item of this.colors.querySelectorAll<HTMLButtonElement>('.swatch')) {
+      const isSelectedColor = item.dataset.color === this.selectedColor
+      const isActiveDrawSelection = this.activeMode === Mode.DRAW && isSelectedColor
+
+      item.setAttribute('aria-pressed', isActiveDrawSelection ? 'true' : 'false')
+    }
   }
 
   protected bindUIEvents(): void {
@@ -732,22 +743,12 @@ class MagicCrayon extends HTMLElement {
 
       if (this.selectedColor === color && this.activeMode === Mode.DRAW) {
         this.setInactiveToolState()
-
-        for (const item of this.colors.querySelectorAll<HTMLButtonElement>('.swatch')) {
-          item.setAttribute('aria-pressed', 'false')
-        }
-
         return
       }
 
       this.selectedColor = color
 
       this.syncToolState(Mode.DRAW)
-      this.context2d.strokeStyle = color
-
-      for (const item of this.colors.querySelectorAll<HTMLButtonElement>('.swatch')) {
-        item.setAttribute('aria-pressed', item === button ? 'true' : 'false')
-      }
     }
 
     const onUndo = () => {
@@ -951,12 +952,15 @@ class MagicCrayon extends HTMLElement {
       ctx.compositing = Composites.ERASE
       ctx.lineWidth = 20
     }
+
+    this.syncColorSelectionState()
   }
 
   protected setInactiveToolState(): void {
     this.activeMode = null
     this.pencilButton.setAttribute('aria-pressed', 'false')
     this.eraserButton.setAttribute('aria-pressed', 'false')
+    this.syncColorSelectionState()
   }
 
   protected setMenuOpen(open: boolean): void {
