@@ -118,10 +118,6 @@ slot[name='width-controls'] {
   min-width: 0;
 }
 
-.width-controls-region slot::slotted(*) {
-  width: 100%;
-}
-
 .menu-toggle {
   display: none;
 }
