@@ -355,6 +355,38 @@ describe('magic-crayon', () => {
     node.clearDrawingData()
   })
 
+  it('applies preset selected/boundary/width-control and width attributes on connect', () => {
+    const node = document.createElement('magic-crayon') as MagicCrayon
+
+    node.setAttribute('selected-crayon', 'clipped')
+    node.setAttribute('boundary', 'off')
+    node.setAttribute('width-controls', 'on')
+    node.setAttribute('stroke-width', '7')
+    node.setAttribute('eraser-scale', '2')
+
+    document.body.append(node)
+
+    const colors = node.shadowRoot?.querySelector<HTMLElement>('.colors')
+    const wrap = node.shadowRoot?.querySelector<HTMLElement>('.wrap')
+    const strokeSlider = node.shadowRoot?.querySelector<HTMLInputElement>(
+      '[data-width-input="stroke"]',
+    )
+    const eraserSlider = node.shadowRoot?.querySelector<HTMLInputElement>(
+      '[data-width-input="eraser"]',
+    )
+
+    expect(node.selectedCrayon).toBe('clipped')
+    expect(node.boundary).toBe('off')
+    expect(node.widthControls).toBe('on')
+    expect(node.strokeWidth).toBe(7)
+    expect(node.eraserScale).toBe(2)
+    expect(colors?.dataset.selectedCrayon).toBe('clipped')
+    expect(wrap?.dataset.boundary).toBe('off')
+    expect(wrap?.dataset.widthControls).toBe('on')
+    expect(strokeSlider?.value).toBe('7')
+    expect(eraserSlider?.value).toBe('2')
+  })
+
   it('throws when connected callback cannot get a 2d context', () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
 
@@ -468,6 +500,86 @@ describe('magic-crayon', () => {
     expect(() => {
       ;(node as unknown as { disconnectedCallback: () => void }).disconnectedCallback()
     }).not.toThrow()
+  })
+
+  it('returns early for non-standard ui handler event payloads', () => {
+    const node = document.createElement('magic-crayon') as MagicCrayon
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const colors = node.shadowRoot?.querySelector<HTMLElement>('.colors')
+    const strokeInput = node.shadowRoot?.querySelector<HTMLInputElement>(
+      '[data-width-input="stroke"]',
+    )
+
+    expect(pencil && colors && strokeInput).toBeTruthy()
+
+    let toolHandler: ((event: Event) => void) | undefined
+    let colorHandler: ((event: Event) => void) | undefined
+    let widthHandler: ((event: Event) => void) | undefined
+
+    const originalPencilAdd = pencil?.addEventListener.bind(pencil)
+    const originalColorsAdd = colors?.addEventListener.bind(colors)
+    const originalStrokeAdd = strokeInput?.addEventListener.bind(strokeInput)
+
+    if (pencil && originalPencilAdd) {
+      vi.spyOn(pencil, 'addEventListener').mockImplementation(
+        (type, listener, options) => {
+          if (type === 'click') {
+            toolHandler = listener as (event: Event) => void
+          }
+
+          return originalPencilAdd(type, listener as EventListener, options)
+        },
+      )
+    }
+
+    if (colors && originalColorsAdd) {
+      vi.spyOn(colors, 'addEventListener').mockImplementation(
+        (type, listener, options) => {
+          if (type === 'click') {
+            colorHandler = listener as (event: Event) => void
+          }
+
+          return originalColorsAdd(type, listener as EventListener, options)
+        },
+      )
+    }
+
+    if (strokeInput && originalStrokeAdd) {
+      vi.spyOn(strokeInput, 'addEventListener').mockImplementation(
+        (type, listener, options) => {
+          if (type === 'input') {
+            widthHandler = listener as (event: Event) => void
+          }
+
+          return originalStrokeAdd(type, listener as EventListener, options)
+        },
+      )
+    }
+
+    document.body.append(node)
+
+    expect(toolHandler).toBeTypeOf('function')
+    expect(colorHandler).toBeTypeOf('function')
+    expect(widthHandler).toBeTypeOf('function')
+
+    toolHandler?.({ currentTarget: document.createElement('div') } as unknown as Event)
+    colorHandler?.({ target: null } as unknown as Event)
+
+    const swatchWithoutColor = document.createElement('button')
+
+    swatchWithoutColor.className = 'swatch'
+    colorHandler?.({ target: swatchWithoutColor } as unknown as Event)
+
+    const invalidTarget = document.createElement('div')
+    const unknownWidthInput = document.createElement('input')
+
+    unknownWidthInput.value = '9'
+    widthHandler?.({ currentTarget: invalidTarget } as unknown as Event)
+    widthHandler?.({ currentTarget: unknownWidthInput } as unknown as Event)
+
+    expect(node.strokeWidth).toBe(5)
+    expect(node.eraserScale).toBe(1)
   })
 
   it('preserves selected color while switching picker modes', () => {
@@ -673,6 +785,28 @@ describe('magic-crayon', () => {
 
     eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(canvas?.style.cursor).toBe('default')
+  })
+
+  it('syncs context line width when width values change in active modes', () => {
+    const node = createMagicCrayon()
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
+    const context2d = (node as unknown as { context2d?: { lineWidth: number } }).context2d
+
+    expect(pencil && eraser && context2d).toBeTruthy()
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    node.strokeWidth = 8
+    expect(context2d?.lineWidth).toBe(8)
+
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    node.eraserScale = 2
+    expect(context2d?.lineWidth).toBe(16)
+
+    node.strokeWidth = 3
+    expect(context2d?.lineWidth).toBe(6)
   })
 
   it('selects default black swatch when entering pencil mode from fresh state', () => {
