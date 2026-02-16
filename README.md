@@ -16,6 +16,15 @@ It ships as a native custom element: `<magic-crayon>`.
 - Two color picker experiences:
   - `crayon` (default)
   - `swatch`
+- Configurable selected crayon presentation:
+  - `full` (default)
+  - `clipped`
+- Optional outer boundary cue for host layout delineation:
+  - `on` (default)
+  - `off`
+- Configurable stroke sizing:
+  - `stroke-width` (base width for drawing)
+  - `eraser-scale` (eraser width multiplier)
 - Export drawing data as:
   - `blob`
   - `dataurl`
@@ -54,7 +63,15 @@ if (!customElements.get(TAG_NAME)) {
 ## Basic Usage
 
 ```html
-<magic-crayon id="pad" serialization="blob" color-picker="crayon"></magic-crayon>
+<magic-crayon
+  id="pad"
+  serialization="blob"
+  color-picker="crayon"
+  selected-crayon="full"
+  boundary="on"
+  stroke-width="5"
+  eraser-scale="1"
+></magic-crayon>
 
 <script type="module">
   import 'magic-crayon/defined'
@@ -72,11 +89,19 @@ if (!customElements.get(TAG_NAME)) {
 
 - `serialization`: `blob | dataurl` (default: `blob`)
 - `color-picker`: `crayon | swatch` (default: `crayon`)
+- `selected-crayon`: `full | clipped` (default: `full`)
+- `boundary`: `on | off` (default: `on`)
+- `stroke-width`: positive number (default: `5`)
+- `eraser-scale`: positive number (default: `1`)
 
 ## Properties
 
 - `serialization: 'blob' | 'dataurl'`
 - `colorPicker: 'crayon' | 'swatch'`
+- `selectedCrayon: 'full' | 'clipped'`
+- `boundary: 'on' | 'off'`
+- `strokeWidth: number` (must be positive)
+- `eraserScale: number` (must be positive)
 - `drawing: Blob | string | null`
 
 ## Methods
