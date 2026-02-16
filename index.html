@@ -6,20 +6,35 @@
     <title>magic-crayon</title>
     <style>
       html,
-      body,
-      #app {
+      body {
         margin: 0;
         width: 100%;
         height: 100%;
       }
-
-      body {
-        overflow: hidden;
+      #app {
+        width: 100%;
+        height: 100dvh;
+        box-sizing: border-box;
       }
     </style>
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module">
+      const app = document.querySelector('#app')
+      const mountFixture = async () => {
+        const { MagicCrayon, TAG_NAME } = await import('/dist/magic-crayon.js')
+
+        if (!customElements.get(TAG_NAME)) {
+          customElements.define(TAG_NAME, MagicCrayon)
+        }
+
+        if (app) {
+          app.innerHTML = `<magic-crayon serialization="blob"></magic-crayon>`
+        }
+      }
+
+      mountFixture()
+    </script>
   </body>
 </html>
