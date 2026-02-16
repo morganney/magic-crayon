@@ -1,0 +1,29 @@
+<template id="magic-crayon-template">
+  <div class="wrap">
+    <div class="canvas-wrap">
+      <canvas part="canvas"></canvas>
+    </div>
+    <div class="controls" part="controls">
+      <button type="button" class="menu-toggle" data-action="menu" aria-expanded="false">
+        Tools
+      </button>
+      <div class="panel">
+        <div class="left">
+          <button type="button" class="tool" data-tool="pencil" aria-pressed="false">
+            Pencil
+          </button>
+          <button type="button" class="tool" data-tool="eraser" aria-pressed="false">
+            Eraser
+          </button>
+          <div class="colors" role="group" aria-label="Pencil colors"></div>
+        </div>
+        <div class="actions">
+          <button type="button" class="clear" data-action="clear">Clear</button>
+          <button type="button" data-action="undo" disabled>Undo</button>
+          <button type="button" data-action="redo" disabled>Redo</button>
+        </div>
+      </div>
+      <button type="button" class="save" data-action="save">Save</button>
+    </div>
+  </div>
+</template>

@@ -1,6 +1,8 @@
 import { Composites, Context2D, Mode, Serializations } from './context2d.js'
 import type { Context2DMetaData, CustomNumberEventListener } from './context2d.js'
 import pencilSvg from '../assets/source/pencil.svg?raw'
+import templateHtml from './template.html?raw'
+import stylesCss from './styles.css?raw'
 
 type MagicCrayonSerialization = 'blob' | 'dataurl'
 type MagicCrayonColorPicker = 'crayon' | 'swatch'
@@ -40,286 +42,33 @@ const COLORS = [
   '#9f5716',
 ] as const
 
-const template = document.createElement('template')
-const crayonIconTemplate = document.createElement('template')
+const parser = new DOMParser()
+const parseTemplateNode = (html: string): HTMLTemplateElement => {
+  const document = parser.parseFromString(html, 'text/html')
+  const node = document.querySelector('template#magic-crayon-template')
 
-crayonIconTemplate.innerHTML = pencilSvg
+  if (!(node instanceof HTMLTemplateElement)) {
+    throw new Error('Expected #magic-crayon-template in template.html.')
+  }
 
-template.innerHTML = `
-  <style>
-    :host {
-      width: 100%;
-      height: 100%;
-      min-height: 0;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      contain: content;
-      container-type: inline-size;
-      container-name: magic-crayon;
-    }
+  return node
+}
+const parseCrayonIcon = (svg: string): SVGElement => {
+  const document = parser.parseFromString(svg, 'image/svg+xml')
+  const node = document.documentElement
 
-    .wrap {
-      position: relative;
-      width: 100%;
-      max-width: 100%;
-      margin-top: auto;
-      overflow: hidden;
-      display: grid;
-      grid-template-rows: auto 60px;
-      gap: 0;
-    }
+  if (!(node instanceof SVGElement) || node.tagName.toLowerCase() !== 'svg') {
+    throw new Error('Expected a root SVG element in pencil.svg.')
+  }
 
-    .wrap[data-boundary='on'] {
-      border: 1px solid #c9c9c9;
-      border-radius: 16px;
-      background-color: #e9e9e9;
-    }
+  return node
+}
+const template = parseTemplateNode(templateHtml)
+const style = document.createElement('style')
+const crayonIcon = parseCrayonIcon(pencilSvg)
 
-    .canvas-wrap {
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      max-height: var(--canvas-max-height, none);
-    }
-
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      border: none;
-      touch-action: none;
-      cursor: default;
-      background-color: #ffffff;
-    }
-
-    .controls {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 16px;
-      padding: 8px 16px;
-      min-width: 0;
-      background-color: #f7f7f7;
-    }
-
-    .panel {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      min-width: 0;
-      flex: 1;
-    }
-
-    .left,
-    .actions,
-    .colors {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .menu-toggle {
-      display: none;
-    }
-
-    button {
-      border-width: 2px;
-      border-style: solid;
-      border-radius: 999px;
-      font-weight: 700;
-      cursor: pointer;
-      background-color: #1da7e1;
-      border-color: #1da7e1;
-      color: #ffffff;
-      padding: 6px 14px;
-      font-size: 14px;
-      line-height: 1;
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-      background-color: #9b9b9b;
-      border-color: #9b9b9b;
-    }
-
-    .tool[aria-pressed='true'] {
-      background-color: #000000;
-      border-color: #000000;
-    }
-
-    .menu-toggle[aria-expanded='true'] {
-      background-color: #000000;
-      border-color: #000000;
-    }
-
-    .swatch {
-      cursor: pointer;
-      color: inherit;
-      flex: 0 0 auto;
-    }
-
-    .tool,
-    .actions > button {
-      flex: 0 0 auto;
-    }
-
-    .colors[data-picker='crayon'] .swatch {
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      width: 16px;
-      height: 44px;
-      padding: 0;
-      overflow: hidden;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      color: inherit;
-      transform-origin: bottom center;
-      transition: transform 0.15s ease;
-    }
-
-    .colors[data-picker='crayon'] .swatch > svg {
-      width: 16px;
-      height: auto;
-      display: block;
-    }
-
-    .colors[data-picker='crayon'][data-selected-crayon='clipped'] .swatch[aria-pressed='true'] {
-      transform: translateY(-8px);
-    }
-
-    .colors[data-picker='crayon'][data-selected-crayon='full'] .swatch[aria-pressed='true'] {
-      overflow: visible;
-      z-index: 1;
-    }
-
-    .colors[data-picker='swatch'] .swatch {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 2px solid #dddddd;
-      padding: 0;
-      background: transparent;
-    }
-
-    .colors[data-picker='swatch'] .swatch[aria-pressed='true'] {
-      border-color: #0b63ce;
-      box-shadow: inset 0 0 0 2px #0b63ce;
-    }
-
-    .clear {
-      color: #d7282f;
-      border-color: #d7282f;
-      background-color: #ffffff;
-    }
-
-    @container magic-crayon (max-width: 768px) {
-      .wrap {
-        grid-template-rows: auto auto;
-        overflow-x: hidden;
-        overflow-y: visible;
-      }
-
-      .controls {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        grid-template-areas: 'menu save';
-        align-items: center;
-        column-gap: 8px;
-        row-gap: 0;
-        padding: 8px;
-      }
-
-      .wrap[data-menu-open='true'] .controls {
-        grid-template-areas:
-          'menu save'
-          'panel panel';
-        row-gap: 8px;
-      }
-
-      .menu-toggle {
-        display: inline-flex;
-        grid-area: menu;
-        justify-self: start;
-      }
-
-      .save {
-        grid-area: save;
-        justify-self: end;
-      }
-
-      .panel {
-        grid-area: panel;
-        display: none;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
-        border: 1px solid #dddddd;
-        border-radius: 12px;
-        padding: 8px;
-        background-color: #ffffff;
-      }
-
-      .wrap[data-menu-open='true'] .panel {
-        display: flex;
-      }
-
-      .left {
-        flex-wrap: nowrap;
-      }
-
-      .colors {
-        overflow-x: auto;
-        overflow-y: hidden;
-        flex-wrap: nowrap;
-        white-space: nowrap;
-        padding-bottom: 2px;
-      }
-
-      .colors[data-picker='crayon'][data-selected-crayon='full'] {
-        align-items: flex-end;
-      }
-
-      .colors[data-picker='crayon'][data-selected-crayon='full']:has(.swatch[aria-pressed='true']) {
-        padding-top: 96px;
-        margin-top: -96px;
-      }
-
-      .actions {
-        flex-wrap: wrap;
-      }
-
-      .actions > button {
-        flex: 1 1 calc(33.333% - 6px);
-        min-width: 84px;
-      }
-    }
-  </style>
-  <div class="wrap">
-    <div class="canvas-wrap">
-      <canvas part="canvas"></canvas>
-    </div>
-    <div class="controls" part="controls">
-      <button type="button" class="menu-toggle" data-action="menu" aria-expanded="false">Tools</button>
-      <div class="panel">
-        <div class="left">
-          <button type="button" class="tool" data-tool="pencil" aria-pressed="false">Pencil</button>
-          <button type="button" class="tool" data-tool="eraser" aria-pressed="false">Eraser</button>
-          <div class="colors" role="group" aria-label="Pencil colors"></div>
-        </div>
-        <div class="actions">
-          <button type="button" class="clear" data-action="clear">Clear</button>
-          <button type="button" data-action="undo" disabled>Undo</button>
-          <button type="button" data-action="redo" disabled>Redo</button>
-        </div>
-      </div>
-      <button type="button" class="save" data-action="save">Save</button>
-    </div>
-  </div>
-`
+style.textContent = stylesCss
+template.content.prepend(style)
 
 const serializationToEnum = {
   blob: Serializations.BLOB,
@@ -752,9 +501,7 @@ class MagicCrayon extends HTMLElement {
     this.colors.replaceChildren(
       ...COLORS.map(color => {
         const button = document.createElement('button')
-        const icon = crayonIconTemplate.content.firstElementChild?.cloneNode(
-          true,
-        ) as SVGElement | null
+        const icon = crayonIcon.cloneNode(true) as SVGElement
 
         button.type = 'button'
         button.className = 'swatch'
@@ -773,11 +520,9 @@ class MagicCrayon extends HTMLElement {
           return button
         }
 
-        if (icon) {
-          icon.setAttribute('aria-hidden', 'true')
-          icon.setAttribute('focusable', 'false')
-          button.append(icon)
-        }
+        icon.setAttribute('aria-hidden', 'true')
+        icon.setAttribute('focusable', 'false')
+        button.append(icon)
 
         return button
       }),
