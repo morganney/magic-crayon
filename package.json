@@ -18,19 +18,18 @@
     "./dist/defined.js"
   ],
   "files": [
-    "dist"
+    "dist/**/*.js",
+    "dist/**/*.ts",
+    "dist/**/*.d.ts"
   ],
   "scripts": {
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
     "prettier": "prettier --write .",
     "dev": "vite -c vite.config.ts",
-    "build": "npm run build:lib && npm run build:types",
-    "build:lib": "vite build -c vite.lib.config.ts",
+    "build": "vite build -c vite.config.ts && npm run build:types",
     "build:types": "tsc -p tsconfig.build.json",
-    "verify:lib": "npm run build:lib && vite -c vite.config.ts",
-    "build:demo": "vite build -c vite.config.ts",
-    "preview": "npm run build:demo && vite preview -c vite.config.ts",
+    "preview": "npm run build && vite preview -c vite.config.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test": "vitest --run",

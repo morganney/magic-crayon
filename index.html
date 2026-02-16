@@ -22,8 +22,15 @@
     <div id="app"></div>
     <script type="module">
       const app = document.querySelector('#app')
+
       const mountFixture = async () => {
-        const { MagicCrayon, TAG_NAME } = await import('/dist/magic-crayon.js')
+        const module = import.meta.hot
+          ? await import('/src/magic-crayon.ts')
+          : await import(
+              /* @vite-ignore */ new URL('./magic-crayon.js', import.meta.url).href
+            )
+
+        const { MagicCrayon, TAG_NAME } = module
 
         if (!customElements.get(TAG_NAME)) {
           customElements.define(TAG_NAME, MagicCrayon)
