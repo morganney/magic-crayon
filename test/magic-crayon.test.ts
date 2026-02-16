@@ -205,11 +205,27 @@ describe('magic-crayon', () => {
     expect(strokeEvent.detail.eraserWidth).toBe(9)
     expect(strokeEvent.detail.source).toBe('stroke')
 
+    const eraserEventPromise = new Promise<CustomEvent<WidthChangeDetail>>(resolve => {
+      node.addEventListener(
+        'widthchange',
+        event => {
+          resolve(event as CustomEvent<WidthChangeDetail>)
+        },
+        { once: true },
+      )
+    })
+
     eraserSlider.value = '2'
     eraserSlider.dispatchEvent(new Event('input', { bubbles: true }))
 
+    const eraserEvent = await eraserEventPromise
+
     expect(node.eraserScale).toBe(2)
     expect(node.getAttribute('eraser-scale')).toBe('2')
+    expect(eraserEvent.detail.strokeWidth).toBe(9)
+    expect(eraserEvent.detail.eraserScale).toBe(2)
+    expect(eraserEvent.detail.eraserWidth).toBe(18)
+    expect(eraserEvent.detail.source).toBe('eraser')
   })
 
   it('accepts custom slotted width controls content', () => {
