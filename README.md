@@ -25,6 +25,9 @@ It ships as a native custom element: `<magic-crayon>`.
 - Configurable stroke sizing:
   - `stroke-width` (base width for drawing)
   - `eraser-scale` (eraser width multiplier)
+- Optional built-in width slider controls:
+  - `width-controls` (`off` default)
+  - replaceable via `slot="width-controls"`
 - Export drawing data as:
   - `blob`
   - `dataurl`
@@ -69,6 +72,7 @@ if (!customElements.get(TAG_NAME)) {
   color-picker="crayon"
   selected-crayon="full"
   boundary="on"
+  width-controls="off"
   stroke-width="5"
   eraser-scale="1"
 ></magic-crayon>
@@ -91,6 +95,7 @@ if (!customElements.get(TAG_NAME)) {
 - `color-picker`: `crayon | swatch` (default: `crayon`)
 - `selected-crayon`: `full | clipped` (default: `full`)
 - `boundary`: `on | off` (default: `on`)
+- `width-controls`: `on | off` (default: `off`)
 - `stroke-width`: positive number (default: `5`)
 - `eraser-scale`: positive number (default: `1`)
 
@@ -100,6 +105,7 @@ if (!customElements.get(TAG_NAME)) {
 - `colorPicker: 'crayon' | 'swatch'`
 - `selectedCrayon: 'full' | 'clipped'`
 - `boundary: 'on' | 'off'`
+- `widthControls: 'on' | 'off'`
 - `strokeWidth: number` (must be positive)
 - `eraserScale: number` (must be positive)
 - `drawing: Blob | string | null`
@@ -118,6 +124,14 @@ if (!customElements.get(TAG_NAME)) {
   - `detail`: `{ available, size }`
 - `redoavailabilitychange`
   - `detail`: `{ available, size }`
+- `widthchange`
+  - `detail`: `{ strokeWidth, eraserScale, eraserWidth, source }`
+
+## Slots
+
+- `width-controls`
+  - Replaces only the width-controls sub-UI while keeping default tools/actions.
+  - Built-in fallback UI is rendered when no assigned content is provided.
 
 All events bubble and are composed.
 

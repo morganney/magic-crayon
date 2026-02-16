@@ -5,6 +5,7 @@ import type {
   AvailabilityDetail,
   MagicCrayon,
   MagicCrayonSaveDetail,
+  WidthChangeDetail,
 } from '../src/magic-crayon.js'
 
 const createMagicCrayon = () => {
@@ -47,6 +48,10 @@ describe('magic-crayon', () => {
     }).toThrow(TypeError)
 
     expect(() => {
+      node.setAttribute('width-controls', 'invalid')
+    }).toThrow(TypeError)
+
+    expect(() => {
       node.setAttribute('stroke-width', '0')
     }).toThrow(TypeError)
 
@@ -83,6 +88,20 @@ describe('magic-crayon', () => {
     expect(wrap?.getAttribute('data-boundary')).toBe('off')
   })
 
+  it('defaults width controls to off and allows turning them on', () => {
+    const node = createMagicCrayon()
+    const wrap = node.shadowRoot?.querySelector('.wrap')
+
+    expect(node.widthControls).toBe('off')
+    expect(node.getAttribute('width-controls')).toBe('off')
+    expect(wrap?.getAttribute('data-width-controls')).toBe('off')
+
+    node.widthControls = 'on'
+
+    expect(node.getAttribute('width-controls')).toBe('on')
+    expect(wrap?.getAttribute('data-width-controls')).toBe('on')
+  })
+
   it('defaults stroke-width and eraser-scale and applies mode-specific line width', () => {
     const node = createMagicCrayon()
     const pencil =
@@ -108,6 +127,68 @@ describe('magic-crayon', () => {
 
     pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(context2d?.lineWidth).toBe(6)
+  })
+
+  it('updates width values from built-in sliders and dispatches widthchange', async () => {
+    const node = createMagicCrayon()
+    const strokeSlider = node.shadowRoot?.querySelector<HTMLInputElement>(
+      '[data-width-input="stroke"]',
+    )
+    const eraserSlider = node.shadowRoot?.querySelector<HTMLInputElement>(
+      '[data-width-input="eraser"]',
+    )
+
+    expect(strokeSlider && eraserSlider).toBeTruthy()
+
+    const eventPromise = new Promise<CustomEvent<WidthChangeDetail>>(resolve => {
+      node.addEventListener(
+        'widthchange',
+        event => {
+          resolve(event as CustomEvent<WidthChangeDetail>)
+        },
+        { once: true },
+      )
+    })
+
+    if (!strokeSlider || !eraserSlider) {
+      throw new Error('Width sliders not found')
+    }
+
+    strokeSlider.value = '9'
+    strokeSlider.dispatchEvent(new Event('input', { bubbles: true }))
+
+    const strokeEvent = await eventPromise
+
+    expect(node.strokeWidth).toBe(9)
+    expect(node.getAttribute('stroke-width')).toBe('9')
+    expect(strokeEvent.detail.strokeWidth).toBe(9)
+    expect(strokeEvent.detail.eraserScale).toBe(1)
+    expect(strokeEvent.detail.eraserWidth).toBe(9)
+    expect(strokeEvent.detail.source).toBe('stroke')
+
+    eraserSlider.value = '2'
+    eraserSlider.dispatchEvent(new Event('input', { bubbles: true }))
+
+    expect(node.eraserScale).toBe(2)
+    expect(node.getAttribute('eraser-scale')).toBe('2')
+  })
+
+  it('accepts custom slotted width controls content', () => {
+    const node = document.createElement('magic-crayon') as MagicCrayon
+    const custom = document.createElement('div')
+
+    custom.slot = 'width-controls'
+    custom.textContent = 'Custom width controls'
+    node.widthControls = 'on'
+    node.append(custom)
+    document.body.append(node)
+
+    const slot = node.shadowRoot?.querySelector<HTMLSlotElement>(
+      'slot[name="width-controls"]',
+    )
+
+    expect(slot?.assignedElements().length).toBe(1)
+    expect(slot?.assignedElements()[0]?.textContent).toContain('Custom width controls')
   })
 
   it('defaults to crayon picker and allows switching to swatch', () => {
@@ -419,6 +500,24 @@ describe('magic-crayon', () => {
     colors?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
     expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('selects a crayon when click originates from inner svg element', () => {
+    const node = createMagicCrayon()
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const swatches = node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.swatch')
+    const targetSwatch = swatches?.item(2)
+    const targetSvg = targetSwatch?.querySelector('svg')
+
+    expect(pencil && targetSwatch && targetSvg).toBeTruthy()
+    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    expect(targetSwatch?.getAttribute('aria-pressed')).toBe('false')
+
+    targetSvg?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(targetSwatch?.getAttribute('aria-pressed')).toBe('true')
   })
 
   it('allows toggling an active tool off', () => {
