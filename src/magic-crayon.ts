@@ -41,7 +41,6 @@ const DEFAULT_WIDTH_CONTROLS: WidthControls = 'off'
 const DEFAULT_STROKE_WIDTH = 5
 const DEFAULT_ERASER_SCALE = 1
 const TAG_NAME = 'magic-crayon'
-
 const COLORS = [
   '#000000',
   '#f9db00',
@@ -55,11 +54,7 @@ const COLORS = [
 ] as const
 
 const template = parseTemplateNode(templateHtml)
-const style = document.createElement('style')
 const crayonIcon = parseCrayonIcon(pencilSvg)
-
-style.textContent = stylesCss
-template.content.prepend(style)
 
 class MagicCrayon extends HTMLElement {
   static observedAttributes = [
@@ -107,7 +102,17 @@ class MagicCrayon extends HTMLElement {
   constructor() {
     super()
     this.root = this.attachShadow({ mode: 'open' })
-    this.root.appendChild(template.content.cloneNode(true))
+    const style = document.createElement('style')
+    const content = template.content.cloneNode(true)
+
+    style.textContent = stylesCss
+
+    if (!(content instanceof DocumentFragment)) {
+      throw new Error('Expected template clone to be a DocumentFragment.')
+    }
+
+    content.prepend(style)
+    this.root.appendChild(content)
 
     this.wrap = this.queryNode('.wrap')
     this.canvasWrap = this.queryNode('.canvas-wrap')
@@ -124,6 +129,7 @@ class MagicCrayon extends HTMLElement {
     this.strokeWidthInput = this.queryNode('[data-width-input="stroke"]')
     this.eraserScaleInput = this.queryNode('[data-width-input="eraser"]')
 
+    this.syncControlUIState()
     this.renderColorButtons()
   }
 
@@ -321,10 +327,7 @@ class MagicCrayon extends HTMLElement {
       this.eraserScaleValue = parseEraserScale(this.getAttribute('eraser-scale'))
     }
 
-    this.wrap.dataset.boundary = this.boundaryValue
-    this.wrap.dataset.widthControls = this.widthControlsValue
-    this.colors.dataset.selectedCrayon = this.selectedCrayonValue
-    this.syncWidthControlValues()
+    this.syncControlUIState()
 
     const context = this.canvas.getContext('2d')
 
@@ -413,7 +416,8 @@ class MagicCrayon extends HTMLElement {
     }
 
     if (name === 'stroke-width') {
-      this.strokeWidthValue = parseStrokeWidth(newValue)
+      this.strokeWidthValue =
+        newValue === null ? DEFAULT_STROKE_WIDTH : parseStrokeWidth(newValue)
       this.syncLineWidthForActiveMode()
       this.syncWidthControlValues()
 
@@ -421,7 +425,8 @@ class MagicCrayon extends HTMLElement {
     }
 
     if (name === 'eraser-scale') {
-      this.eraserScaleValue = parseEraserScale(newValue)
+      this.eraserScaleValue =
+        newValue === null ? DEFAULT_ERASER_SCALE : parseEraserScale(newValue)
       this.syncLineWidthForActiveMode()
       this.syncWidthControlValues()
 
@@ -852,6 +857,13 @@ class MagicCrayon extends HTMLElement {
   protected syncWidthControlValues(): void {
     this.strokeWidthInput.value = String(this.strokeWidthValue)
     this.eraserScaleInput.value = String(this.eraserScaleValue)
+  }
+
+  protected syncControlUIState(): void {
+    this.wrap.dataset.boundary = this.boundaryValue
+    this.wrap.dataset.widthControls = this.widthControlsValue
+    this.colors.dataset.selectedCrayon = this.selectedCrayonValue
+    this.syncWidthControlValues()
   }
 
   protected dispatchWidthChange(source: 'stroke' | 'eraser'): void {

@@ -129,6 +129,45 @@ describe('magic-crayon', () => {
     expect(context2d?.lineWidth).toBe(6)
   })
 
+  it('resets stroke-width and eraser-scale to defaults when attributes are removed', () => {
+    const node = createMagicCrayon()
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
+    const context2d = (node as unknown as { context2d?: { lineWidth: number } }).context2d
+    const strokeSlider = node.shadowRoot?.querySelector<HTMLInputElement>(
+      '[data-width-input="stroke"]',
+    )
+    const eraserSlider = node.shadowRoot?.querySelector<HTMLInputElement>(
+      '[data-width-input="eraser"]',
+    )
+
+    expect(pencil && eraser && context2d && strokeSlider && eraserSlider).toBeTruthy()
+
+    node.strokeWidth = 9
+    node.eraserScale = 2
+
+    expect(node.getAttribute('stroke-width')).toBe('9')
+    expect(node.getAttribute('eraser-scale')).toBe('2')
+
+    expect(() => node.removeAttribute('stroke-width')).not.toThrow()
+    expect(() => node.removeAttribute('eraser-scale')).not.toThrow()
+
+    expect(node.strokeWidth).toBe(5)
+    expect(node.eraserScale).toBe(1)
+    expect(node.getAttribute('stroke-width')).toBeNull()
+    expect(node.getAttribute('eraser-scale')).toBeNull()
+    expect(strokeSlider?.value).toBe('5')
+    expect(eraserSlider?.value).toBe('1')
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(context2d?.lineWidth).toBe(5)
+
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(context2d?.lineWidth).toBe(5)
+  })
+
   it('updates width values from built-in sliders and dispatches widthchange', async () => {
     const node = createMagicCrayon()
     const strokeSlider = node.shadowRoot?.querySelector<HTMLInputElement>(
