@@ -1,40 +1,43 @@
-import { Composites, Context2D, Mode, Serializations } from './context2d.js'
-import type { Context2DMetaData, CustomNumberEventListener } from './context2d.js'
+import { Composites, Context2D, Mode } from './context2d.js'
+import type { CustomNumberEventListener } from './context2d.js'
 import pencilSvg from '../assets/source/pencil.svg?raw'
 import templateHtml from './template.html?raw'
 import stylesCss from './styles.css?raw'
+import {
+  assertBoundary,
+  assertColorPicker,
+  assertEraserScale,
+  assertSelectedCrayon,
+  assertSerialization,
+  assertStrokeWidth,
+  assertWidthControls,
+  isElement,
+  isHTMLButtonElement,
+  isHTMLInputElement,
+  parseCrayonIcon,
+  parseEraserScale,
+  parseStrokeWidth,
+  parseTemplateNode,
+  serializationToEnum,
+  toSvgElement,
+} from './helpers.js'
+import type {
+  AvailabilityDetail,
+  Boundary,
+  ColorPicker,
+  DrawingData,
+  SaveDetail,
+  SelectedCrayon,
+  Serialization,
+  WidthControls,
+  WidthChangeDetail,
+} from './types.js'
 
-type MagicCrayonSerialization = 'blob' | 'dataurl'
-type MagicCrayonColorPicker = 'crayon' | 'swatch'
-type MagicCrayonSelectedCrayon = 'full' | 'clipped'
-type MagicCrayonBoundary = 'on' | 'off'
-type MagicCrayonWidthControls = 'on' | 'off'
-type MagicCrayonDrawingData = Blob | string
-
-type MagicCrayonSaveDetail = {
-  data: MagicCrayonDrawingData
-  serialization: MagicCrayonSerialization
-  meta: Context2DMetaData
-  timestamp: string
-}
-
-type AvailabilityDetail = {
-  available: boolean
-  size: number
-}
-
-type WidthChangeDetail = {
-  strokeWidth: number
-  eraserScale: number
-  eraserWidth: number
-  source: 'stroke' | 'eraser'
-}
-
-const DEFAULT_SERIALIZATION: MagicCrayonSerialization = 'blob'
-const DEFAULT_COLOR_PICKER: MagicCrayonColorPicker = 'crayon'
-const DEFAULT_SELECTED_CRAYON: MagicCrayonSelectedCrayon = 'full'
-const DEFAULT_BOUNDARY: MagicCrayonBoundary = 'on'
-const DEFAULT_WIDTH_CONTROLS: MagicCrayonWidthControls = 'off'
+const DEFAULT_SERIALIZATION: Serialization = 'blob'
+const DEFAULT_COLOR_PICKER: ColorPicker = 'crayon'
+const DEFAULT_SELECTED_CRAYON: SelectedCrayon = 'full'
+const DEFAULT_BOUNDARY: Boundary = 'on'
+const DEFAULT_WIDTH_CONTROLS: WidthControls = 'off'
 const DEFAULT_STROKE_WIDTH = 5
 const DEFAULT_ERASER_SCALE = 1
 const TAG_NAME = 'magic-crayon'
@@ -51,115 +54,12 @@ const COLORS = [
   '#9f5716',
 ] as const
 
-const parser = new DOMParser()
-const parseTemplateNode = (html: string): HTMLTemplateElement => {
-  const document = parser.parseFromString(html, 'text/html')
-  const node = document.querySelector('template#magic-crayon-template')
-
-  if (!(node instanceof HTMLTemplateElement)) {
-    throw new Error('Expected #magic-crayon-template in template.html.')
-  }
-
-  return node
-}
-const parseCrayonIcon = (svg: string): SVGElement => {
-  const document = parser.parseFromString(svg, 'image/svg+xml')
-  const node = document.documentElement
-
-  if (!(node instanceof SVGElement) || node.tagName.toLowerCase() !== 'svg') {
-    throw new Error('Expected a root SVG element in pencil.svg.')
-  }
-
-  return node
-}
 const template = parseTemplateNode(templateHtml)
 const style = document.createElement('style')
 const crayonIcon = parseCrayonIcon(pencilSvg)
 
 style.textContent = stylesCss
 template.content.prepend(style)
-
-const serializationToEnum = {
-  blob: Serializations.BLOB,
-  dataurl: Serializations.DATA_URL,
-} as const
-
-const assertSerialization = (value: string | null): MagicCrayonSerialization => {
-  if (value === 'blob' || value === 'dataurl') {
-    return value
-  }
-
-  throw new TypeError('serialization must be either "blob" or "dataurl".')
-}
-
-const assertColorPicker = (value: string | null): MagicCrayonColorPicker => {
-  if (value === 'crayon' || value === 'swatch') {
-    return value
-  }
-
-  throw new TypeError('color-picker must be either "crayon" or "swatch".')
-}
-
-const assertSelectedCrayon = (value: string | null): MagicCrayonSelectedCrayon => {
-  if (value === 'full' || value === 'clipped') {
-    return value
-  }
-
-  throw new TypeError('selected-crayon must be either "full" or "clipped".')
-}
-
-const assertBoundary = (value: string | null): MagicCrayonBoundary => {
-  if (value === 'on' || value === 'off') {
-    return value
-  }
-
-  throw new TypeError('boundary must be either "on" or "off".')
-}
-
-const assertWidthControls = (value: string | null): MagicCrayonWidthControls => {
-  if (value === 'on' || value === 'off') {
-    return value
-  }
-
-  throw new TypeError('width-controls must be either "on" or "off".')
-}
-
-const assertPositiveNumber = (value: number, name: string): number => {
-  if (Number.isFinite(value) && value > 0) {
-    return value
-  }
-
-  throw new TypeError(`${name} must be a positive number.`)
-}
-
-const assertStrokeWidth = (value: number): number =>
-  assertPositiveNumber(value, 'stroke-width')
-
-const assertEraserScale = (value: number): number =>
-  assertPositiveNumber(value, 'eraser-scale')
-
-const parseStrokeWidth = (value: string | null): number =>
-  assertStrokeWidth(Number(value))
-
-const parseEraserScale = (value: string | null): number =>
-  assertEraserScale(Number(value))
-
-const isElement = (value: EventTarget | null): value is Element =>
-  value instanceof Element
-
-const isHTMLButtonElement = (value: EventTarget | null): value is HTMLButtonElement =>
-  value instanceof HTMLButtonElement
-
-const isHTMLInputElement = (value: EventTarget | null): value is HTMLInputElement =>
-  value instanceof HTMLInputElement
-
-const toSvgElement = (value: Node): SVGElement => {
-  if (value instanceof SVGElement) {
-    return value
-  }
-
-  throw new Error('Expected crayon icon clone to be an SVGElement.')
-}
 
 class MagicCrayon extends HTMLElement {
   static observedAttributes = [
@@ -195,12 +95,12 @@ class MagicCrayon extends HTMLElement {
   protected isDrawing = false
   protected activeMode: Mode | null = null
   protected selectedColor: string | null = null
-  protected drawingValue: MagicCrayonDrawingData | null = null
-  protected serializationValue: MagicCrayonSerialization = DEFAULT_SERIALIZATION
-  protected colorPickerValue: MagicCrayonColorPicker = DEFAULT_COLOR_PICKER
-  protected selectedCrayonValue: MagicCrayonSelectedCrayon = DEFAULT_SELECTED_CRAYON
-  protected boundaryValue: MagicCrayonBoundary = DEFAULT_BOUNDARY
-  protected widthControlsValue: MagicCrayonWidthControls = DEFAULT_WIDTH_CONTROLS
+  protected drawingValue: DrawingData | null = null
+  protected serializationValue: Serialization = DEFAULT_SERIALIZATION
+  protected colorPickerValue: ColorPicker = DEFAULT_COLOR_PICKER
+  protected selectedCrayonValue: SelectedCrayon = DEFAULT_SELECTED_CRAYON
+  protected boundaryValue: Boundary = DEFAULT_BOUNDARY
+  protected widthControlsValue: WidthControls = DEFAULT_WIDTH_CONTROLS
   protected strokeWidthValue: number = DEFAULT_STROKE_WIDTH
   protected eraserScaleValue: number = DEFAULT_ERASER_SCALE
 
@@ -227,11 +127,11 @@ class MagicCrayon extends HTMLElement {
     this.renderColorButtons()
   }
 
-  get serialization(): MagicCrayonSerialization {
+  get serialization(): Serialization {
     return this.serializationValue
   }
 
-  set serialization(value: MagicCrayonSerialization) {
+  set serialization(value: Serialization) {
     const next = assertSerialization(value)
 
     this.serializationValue = next
@@ -241,11 +141,11 @@ class MagicCrayon extends HTMLElement {
     }
   }
 
-  get colorPicker(): MagicCrayonColorPicker {
+  get colorPicker(): ColorPicker {
     return this.colorPickerValue
   }
 
-  set colorPicker(value: MagicCrayonColorPicker) {
+  set colorPicker(value: ColorPicker) {
     const next = assertColorPicker(value)
 
     this.colorPickerValue = next
@@ -255,11 +155,11 @@ class MagicCrayon extends HTMLElement {
     }
   }
 
-  get selectedCrayon(): MagicCrayonSelectedCrayon {
+  get selectedCrayon(): SelectedCrayon {
     return this.selectedCrayonValue
   }
 
-  set selectedCrayon(value: MagicCrayonSelectedCrayon) {
+  set selectedCrayon(value: SelectedCrayon) {
     const next = assertSelectedCrayon(value)
 
     this.selectedCrayonValue = next
@@ -270,11 +170,11 @@ class MagicCrayon extends HTMLElement {
     }
   }
 
-  get boundary(): MagicCrayonBoundary {
+  get boundary(): Boundary {
     return this.boundaryValue
   }
 
-  set boundary(value: MagicCrayonBoundary) {
+  set boundary(value: Boundary) {
     const next = assertBoundary(value)
 
     this.boundaryValue = next
@@ -317,11 +217,11 @@ class MagicCrayon extends HTMLElement {
     }
   }
 
-  get widthControls(): MagicCrayonWidthControls {
+  get widthControls(): WidthControls {
     return this.widthControlsValue
   }
 
-  set widthControls(value: MagicCrayonWidthControls) {
+  set widthControls(value: WidthControls) {
     const next = assertWidthControls(value)
 
     this.widthControlsValue = next
@@ -364,11 +264,11 @@ class MagicCrayon extends HTMLElement {
     super.setAttribute(qualifiedName, value)
   }
 
-  get drawing(): MagicCrayonDrawingData | null {
+  get drawing(): DrawingData | null {
     return this.drawingValue
   }
 
-  set drawing(value: MagicCrayonDrawingData | null) {
+  set drawing(value: DrawingData | null) {
     this.drawingValue = value
 
     if (value) {
@@ -530,15 +430,15 @@ class MagicCrayon extends HTMLElement {
   }
 
   async getDrawingData(
-    serialization: MagicCrayonSerialization = this.serializationValue,
-  ): Promise<MagicCrayonDrawingData> {
+    serialization: Serialization = this.serializationValue,
+  ): Promise<DrawingData> {
     const mode = assertSerialization(serialization)
     const ctx = this.requireContext2D()
 
     return ctx.getData(serializationToEnum[mode])
   }
 
-  async setDrawingData(data: MagicCrayonDrawingData): Promise<void> {
+  async setDrawingData(data: DrawingData): Promise<void> {
     this.drawingValue = data
 
     if (this.context2d) {
@@ -703,7 +603,7 @@ class MagicCrayon extends HTMLElement {
       const data = await this.getDrawingData()
 
       this.dispatchEvent(
-        new CustomEvent<MagicCrayonSaveDetail>('save', {
+        new CustomEvent<SaveDetail>('save', {
           bubbles: true,
           composed: true,
           detail: {
@@ -976,7 +876,7 @@ declare global {
   }
 
   interface GlobalEventHandlersEventMap {
-    save: CustomEvent<MagicCrayonSaveDetail>
+    save: CustomEvent<SaveDetail>
     undoavailabilitychange: CustomEvent<AvailabilityDetail>
     redoavailabilitychange: CustomEvent<AvailabilityDetail>
     widthchange: CustomEvent<WidthChangeDetail>
@@ -986,12 +886,12 @@ declare global {
 export { MagicCrayon, TAG_NAME }
 export type {
   AvailabilityDetail,
-  MagicCrayonBoundary,
-  MagicCrayonColorPicker,
-  MagicCrayonDrawingData,
-  MagicCrayonSaveDetail,
-  MagicCrayonSelectedCrayon,
-  MagicCrayonSerialization,
-  MagicCrayonWidthControls,
+  Boundary,
+  ColorPicker,
+  DrawingData,
+  SaveDetail,
+  SelectedCrayon,
+  Serialization,
+  WidthControls,
   WidthChangeDetail,
 }

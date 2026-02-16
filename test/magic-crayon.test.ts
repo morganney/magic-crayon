@@ -4,7 +4,7 @@ import '../src/defined.js'
 import type {
   AvailabilityDetail,
   MagicCrayon,
-  MagicCrayonSaveDetail,
+  SaveDetail,
   WidthChangeDetail,
 } from '../src/magic-crayon.js'
 
@@ -214,11 +214,11 @@ describe('magic-crayon', () => {
 
   it('dispatches save event with payload detail', async () => {
     const node = createMagicCrayon()
-    const eventPromise = new Promise<CustomEvent<MagicCrayonSaveDetail>>(resolve => {
+    const eventPromise = new Promise<CustomEvent<SaveDetail>>(resolve => {
       node.addEventListener(
         'save',
         event => {
-          resolve(event as CustomEvent<MagicCrayonSaveDetail>)
+          resolve(event as CustomEvent<SaveDetail>)
         },
         { once: true },
       )
