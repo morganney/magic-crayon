@@ -48,6 +48,10 @@ describe('magic-crayon', () => {
     }).toThrow(TypeError)
 
     expect(() => {
+      node.setAttribute('control-style', 'invalid')
+    }).toThrow(TypeError)
+
+    expect(() => {
       node.setAttribute('width-controls', 'invalid')
     }).toThrow(TypeError)
 
@@ -100,6 +104,26 @@ describe('magic-crayon', () => {
 
     expect(node.getAttribute('width-controls')).toBe('on')
     expect(wrap?.getAttribute('data-width-controls')).toBe('on')
+  })
+
+  it('defaults control style to text and allows icon mode', () => {
+    const node = createMagicCrayon()
+    const clear = node.shadowRoot?.querySelector<HTMLButtonElement>(
+      '[data-action="clear"]',
+    )
+
+    expect(node.controlStyle).toBe('text')
+    expect(node.getAttribute('control-style')).toBe('text')
+    expect(clear?.textContent).toBe('Clear')
+    expect(clear?.querySelector('svg')).toBeNull()
+
+    node.controlStyle = 'icon'
+
+    expect(node.getAttribute('control-style')).toBe('icon')
+    expect(clear?.textContent?.trim()).toBe('')
+    expect(clear?.querySelector('svg')).toBeTruthy()
+    expect(clear?.getAttribute('aria-label')).toBe('Clear')
+    expect(clear?.classList.contains('is-icon')).toBe(true)
   })
 
   it('defaults stroke-width and eraser-scale and applies mode-specific line width', () => {
@@ -836,10 +860,32 @@ describe('magic-crayon', () => {
     expect(canvas?.style.cursor).toBe('default')
 
     eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(canvas?.style.cursor).toBe('crosshair')
+    expect(canvas?.style.cursor).toBe('cell')
 
     eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(canvas?.style.cursor).toBe('default')
+  })
+
+  it('supports draw-cursor and erase-cursor overrides', () => {
+    const node = createMagicCrayon()
+    const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
+    const pencil =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
+
+    expect(canvas && pencil && eraser).toBeTruthy()
+    expect(node.drawCursor).toBe('crosshair')
+    expect(node.eraseCursor).toBe('cell')
+
+    node.drawCursor = 'pointer'
+    node.eraseCursor = 'grab'
+
+    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(canvas?.style.cursor).toBe('pointer')
+
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(canvas?.style.cursor).toBe('grab')
   })
 
   it('syncs context line width when width values change in active modes', () => {

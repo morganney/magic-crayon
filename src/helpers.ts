@@ -2,6 +2,7 @@ import { Serializations } from './context2d.js'
 import type {
   Boundary,
   ColorPicker,
+  ControlStyle,
   SelectedCrayon,
   Serialization,
   WidthControls,
@@ -20,16 +21,41 @@ export const parseTemplateNode = (html: string): HTMLTemplateElement => {
   return node
 }
 
-export const parseCrayonIcon = (svg: string): SVGElement => {
+const parseSvgRoot = (svg: string, sourceName: string): SVGElement => {
   const document = parser.parseFromString(svg, 'image/svg+xml')
   const node = document.documentElement
 
   if (!(node instanceof SVGElement) || node.tagName.toLowerCase() !== 'svg') {
-    throw new Error('Expected a root SVG element in pencil.svg.')
+    throw new Error(`Expected a root SVG element in ${sourceName}.`)
   }
 
   return node
 }
+
+export const parseCrayonIcon = (svg: string): SVGElement =>
+  parseSvgRoot(svg, 'pencil.svg')
+
+export const parseActionIcon = (svg: string, sourceName: string): SVGElement =>
+  (() => {
+    const icon = parseSvgRoot(svg, sourceName)
+
+    icon.removeAttribute('style')
+    icon.setAttribute('fill', 'currentColor')
+
+    for (const node of icon.querySelectorAll('*')) {
+      if (!(node instanceof SVGElement)) {
+        continue
+      }
+
+      node.removeAttribute('style')
+
+      if (node.hasAttribute('fill') && node.getAttribute('fill') !== 'none') {
+        node.setAttribute('fill', 'currentColor')
+      }
+    }
+
+    return icon
+  })()
 
 export const serializationToEnum = {
   blob: Serializations.BLOB,
@@ -74,6 +100,14 @@ export const assertWidthControls = (value: string | null): WidthControls => {
   }
 
   throw new TypeError('width-controls must be either "on" or "off".')
+}
+
+export const assertControlStyle = (value: string | null): ControlStyle => {
+  if (value === 'text' || value === 'icon') {
+    return value
+  }
+
+  throw new TypeError('control-style must be either "text" or "icon".')
 }
 
 const assertPositiveNumber = (value: number, name: string): number => {
