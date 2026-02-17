@@ -3,6 +3,14 @@
   "version": "1.0.0-rc.0",
   "type": "module",
   "description": "An HTML custom element for using a crayon to draw on a canvas and serialize as a blob or data URL.",
+  "homepage": "https://github.com/morganney/magic-crayon#readme",
+  "bugs": {
+    "url": "https://github.com/morganney/magic-crayon/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/morganney/magic-crayon"
+  },
   "types": "./dist/magic-crayon.d.ts",
   "exports": {
     ".": {
