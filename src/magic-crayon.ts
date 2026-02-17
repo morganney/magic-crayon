@@ -1,31 +1,46 @@
-import { Composites, Context2D, Mode, Serializations } from './context2d.js'
-import type { Context2DMetaData, CustomNumberEventListener } from './context2d.js'
+import { Composites, Context2D, Mode } from './context2d.js'
+import type { CustomNumberEventListener } from './context2d.js'
 import pencilSvg from '../assets/source/pencil.svg?raw'
+import templateHtml from './template.html?raw'
+import stylesCss from './styles.css?raw'
+import {
+  assertBoundary,
+  assertColorPicker,
+  assertEraserScale,
+  assertSelectedCrayon,
+  assertSerialization,
+  assertStrokeWidth,
+  assertWidthControls,
+  isElement,
+  isHTMLButtonElement,
+  isHTMLInputElement,
+  parseCrayonIcon,
+  parseEraserScale,
+  parseStrokeWidth,
+  parseTemplateNode,
+  serializationToEnum,
+  toSvgElement,
+} from './helpers.js'
+import type {
+  AvailabilityDetail,
+  Boundary,
+  ColorPicker,
+  DrawingData,
+  SaveDetail,
+  SelectedCrayon,
+  Serialization,
+  WidthControls,
+  WidthChangeDetail,
+} from './types.js'
 
-type MagicCrayonSerialization = 'blob' | 'dataurl'
-type MagicCrayonColorPicker = 'crayon' | 'swatch'
-type MagicCrayonSelectedCrayon = 'full' | 'clipped'
-type MagicCrayonBoundary = 'on' | 'off'
-type MagicCrayonDrawingData = Blob | string
-
-type MagicCrayonSaveDetail = {
-  data: MagicCrayonDrawingData
-  serialization: MagicCrayonSerialization
-  meta: Context2DMetaData
-  timestamp: string
-}
-
-type AvailabilityDetail = {
-  available: boolean
-  size: number
-}
-
-const DEFAULT_SERIALIZATION: MagicCrayonSerialization = 'blob'
-const DEFAULT_COLOR_PICKER: MagicCrayonColorPicker = 'crayon'
-const DEFAULT_SELECTED_CRAYON: MagicCrayonSelectedCrayon = 'full'
-const DEFAULT_BOUNDARY: MagicCrayonBoundary = 'on'
+const DEFAULT_SERIALIZATION: Serialization = 'blob'
+const DEFAULT_COLOR_PICKER: ColorPicker = 'crayon'
+const DEFAULT_SELECTED_CRAYON: SelectedCrayon = 'full'
+const DEFAULT_BOUNDARY: Boundary = 'on'
+const DEFAULT_WIDTH_CONTROLS: WidthControls = 'off'
+const DEFAULT_STROKE_WIDTH = 5
+const DEFAULT_ERASER_SCALE = 1
 const TAG_NAME = 'magic-crayon'
-
 const COLORS = [
   '#000000',
   '#f9db00',
@@ -38,323 +53,8 @@ const COLORS = [
   '#9f5716',
 ] as const
 
-const template = document.createElement('template')
-const crayonIconTemplate = document.createElement('template')
-
-crayonIconTemplate.innerHTML = pencilSvg
-
-template.innerHTML = `
-  <style>
-    :host {
-      width: 100%;
-      height: 100%;
-      min-height: 0;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      contain: content;
-      container-type: inline-size;
-      container-name: magic-crayon;
-    }
-
-    .wrap {
-      position: relative;
-      width: 100%;
-      max-width: 100%;
-      margin-top: auto;
-      overflow: hidden;
-      display: grid;
-      grid-template-rows: auto 60px;
-      gap: 0;
-    }
-
-    .wrap[data-boundary='on'] {
-      border: 1px solid #c9c9c9;
-      border-radius: 16px;
-      background-color: #e9e9e9;
-    }
-
-    .canvas-wrap {
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      max-height: var(--canvas-max-height, none);
-    }
-
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      border: none;
-      touch-action: none;
-      cursor: default;
-      background-color: #ffffff;
-    }
-
-    .controls {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 16px;
-      padding: 8px 16px;
-      min-width: 0;
-      background-color: #f7f7f7;
-    }
-
-    .panel {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      min-width: 0;
-      flex: 1;
-    }
-
-    .left,
-    .actions,
-    .colors {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .menu-toggle {
-      display: none;
-    }
-
-    button {
-      border-width: 2px;
-      border-style: solid;
-      border-radius: 999px;
-      font-weight: 700;
-      cursor: pointer;
-      background-color: #1da7e1;
-      border-color: #1da7e1;
-      color: #ffffff;
-      padding: 6px 14px;
-      font-size: 14px;
-      line-height: 1;
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-      background-color: #9b9b9b;
-      border-color: #9b9b9b;
-    }
-
-    .tool[aria-pressed='true'] {
-      background-color: #000000;
-      border-color: #000000;
-    }
-
-    .menu-toggle[aria-expanded='true'] {
-      background-color: #000000;
-      border-color: #000000;
-    }
-
-    .swatch {
-      cursor: pointer;
-      color: inherit;
-      flex: 0 0 auto;
-    }
-
-    .tool,
-    .actions > button {
-      flex: 0 0 auto;
-    }
-
-    .colors[data-picker='crayon'] .swatch {
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      width: 16px;
-      height: 44px;
-      padding: 0;
-      overflow: hidden;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      color: inherit;
-      transform-origin: bottom center;
-      transition: transform 0.15s ease;
-    }
-
-    .colors[data-picker='crayon'] .swatch > svg {
-      width: 16px;
-      height: auto;
-      display: block;
-    }
-
-    .colors[data-picker='crayon'][data-selected-crayon='clipped'] .swatch[aria-pressed='true'] {
-      transform: translateY(-8px);
-    }
-
-    .colors[data-picker='crayon'][data-selected-crayon='full'] .swatch[aria-pressed='true'] {
-      overflow: visible;
-      z-index: 1;
-    }
-
-    .colors[data-picker='swatch'] .swatch {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 2px solid #dddddd;
-      padding: 0;
-      background: transparent;
-    }
-
-    .colors[data-picker='swatch'] .swatch[aria-pressed='true'] {
-      border-color: #0b63ce;
-      box-shadow: inset 0 0 0 2px #0b63ce;
-    }
-
-    .clear {
-      color: #d7282f;
-      border-color: #d7282f;
-      background-color: #ffffff;
-    }
-
-    @container magic-crayon (max-width: 768px) {
-      .wrap {
-        grid-template-rows: auto auto;
-        overflow-x: hidden;
-        overflow-y: visible;
-      }
-
-      .controls {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        grid-template-areas: 'menu save';
-        align-items: center;
-        column-gap: 8px;
-        row-gap: 0;
-        padding: 8px;
-      }
-
-      .wrap[data-menu-open='true'] .controls {
-        grid-template-areas:
-          'menu save'
-          'panel panel';
-        row-gap: 8px;
-      }
-
-      .menu-toggle {
-        display: inline-flex;
-        grid-area: menu;
-        justify-self: start;
-      }
-
-      .save {
-        grid-area: save;
-        justify-self: end;
-      }
-
-      .panel {
-        grid-area: panel;
-        display: none;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
-        border: 1px solid #dddddd;
-        border-radius: 12px;
-        padding: 8px;
-        background-color: #ffffff;
-      }
-
-      .wrap[data-menu-open='true'] .panel {
-        display: flex;
-      }
-
-      .left {
-        flex-wrap: nowrap;
-      }
-
-      .colors {
-        overflow-x: auto;
-        overflow-y: hidden;
-        flex-wrap: nowrap;
-        white-space: nowrap;
-        padding-bottom: 2px;
-      }
-
-      .colors[data-picker='crayon'][data-selected-crayon='full'] {
-        align-items: flex-end;
-      }
-
-      .colors[data-picker='crayon'][data-selected-crayon='full']:has(.swatch[aria-pressed='true']) {
-        padding-top: 96px;
-        margin-top: -96px;
-      }
-
-      .actions {
-        flex-wrap: wrap;
-      }
-
-      .actions > button {
-        flex: 1 1 calc(33.333% - 6px);
-        min-width: 84px;
-      }
-    }
-  </style>
-  <div class="wrap">
-    <div class="canvas-wrap">
-      <canvas part="canvas"></canvas>
-    </div>
-    <div class="controls" part="controls">
-      <button type="button" class="menu-toggle" data-action="menu" aria-expanded="false">Tools</button>
-      <div class="panel">
-        <div class="left">
-          <button type="button" class="tool" data-tool="pencil" aria-pressed="false">Pencil</button>
-          <button type="button" class="tool" data-tool="eraser" aria-pressed="false">Eraser</button>
-          <div class="colors" role="group" aria-label="Pencil colors"></div>
-        </div>
-        <div class="actions">
-          <button type="button" class="clear" data-action="clear">Clear</button>
-          <button type="button" data-action="undo" disabled>Undo</button>
-          <button type="button" data-action="redo" disabled>Redo</button>
-        </div>
-      </div>
-      <button type="button" class="save" data-action="save">Save</button>
-    </div>
-  </div>
-`
-
-const serializationToEnum = {
-  blob: Serializations.BLOB,
-  dataurl: Serializations.DATA_URL,
-} as const
-
-const assertSerialization = (value: string | null): MagicCrayonSerialization => {
-  if (value === 'blob' || value === 'dataurl') {
-    return value
-  }
-
-  throw new TypeError('serialization must be either "blob" or "dataurl".')
-}
-
-const assertColorPicker = (value: string | null): MagicCrayonColorPicker => {
-  if (value === 'crayon' || value === 'swatch') {
-    return value
-  }
-
-  throw new TypeError('color-picker must be either "crayon" or "swatch".')
-}
-
-const assertSelectedCrayon = (value: string | null): MagicCrayonSelectedCrayon => {
-  if (value === 'full' || value === 'clipped') {
-    return value
-  }
-
-  throw new TypeError('selected-crayon must be either "full" or "clipped".')
-}
-
-const assertBoundary = (value: string | null): MagicCrayonBoundary => {
-  if (value === 'on' || value === 'off') {
-    return value
-  }
-
-  throw new TypeError('boundary must be either "on" or "off".')
-}
+const template = parseTemplateNode(templateHtml)
+const crayonIcon = parseCrayonIcon(pencilSvg)
 
 class MagicCrayon extends HTMLElement {
   static observedAttributes = [
@@ -362,6 +62,9 @@ class MagicCrayon extends HTMLElement {
     'color-picker',
     'selected-crayon',
     'boundary',
+    'width-controls',
+    'stroke-width',
+    'eraser-scale',
   ]
 
   protected readonly root: ShadowRoot
@@ -377,6 +80,8 @@ class MagicCrayon extends HTMLElement {
   protected readonly clearButton: HTMLButtonElement
   protected readonly pencilButton: HTMLButtonElement
   protected readonly eraserButton: HTMLButtonElement
+  protected readonly strokeWidthInput: HTMLInputElement
+  protected readonly eraserScaleInput: HTMLInputElement
 
   protected context2d: Context2D | null = null
   protected resizeObserver: ResizeObserver | null = null
@@ -385,16 +90,29 @@ class MagicCrayon extends HTMLElement {
   protected isDrawing = false
   protected activeMode: Mode | null = null
   protected selectedColor: string | null = null
-  protected drawingValue: MagicCrayonDrawingData | null = null
-  protected serializationValue: MagicCrayonSerialization = DEFAULT_SERIALIZATION
-  protected colorPickerValue: MagicCrayonColorPicker = DEFAULT_COLOR_PICKER
-  protected selectedCrayonValue: MagicCrayonSelectedCrayon = DEFAULT_SELECTED_CRAYON
-  protected boundaryValue: MagicCrayonBoundary = DEFAULT_BOUNDARY
+  protected drawingValue: DrawingData | null = null
+  protected serializationValue: Serialization = DEFAULT_SERIALIZATION
+  protected colorPickerValue: ColorPicker = DEFAULT_COLOR_PICKER
+  protected selectedCrayonValue: SelectedCrayon = DEFAULT_SELECTED_CRAYON
+  protected boundaryValue: Boundary = DEFAULT_BOUNDARY
+  protected widthControlsValue: WidthControls = DEFAULT_WIDTH_CONTROLS
+  protected strokeWidthValue: number = DEFAULT_STROKE_WIDTH
+  protected eraserScaleValue: number = DEFAULT_ERASER_SCALE
 
   constructor() {
     super()
     this.root = this.attachShadow({ mode: 'open' })
-    this.root.appendChild(template.content.cloneNode(true))
+    const style = document.createElement('style')
+    const content = template.content.cloneNode(true)
+
+    style.textContent = stylesCss
+
+    if (!(content instanceof DocumentFragment)) {
+      throw new Error('Expected template clone to be a DocumentFragment.')
+    }
+
+    content.prepend(style)
+    this.root.appendChild(content)
 
     this.wrap = this.queryNode('.wrap')
     this.canvasWrap = this.queryNode('.canvas-wrap')
@@ -408,15 +126,18 @@ class MagicCrayon extends HTMLElement {
     this.clearButton = this.queryNode('[data-action="clear"]')
     this.pencilButton = this.queryNode('[data-tool="pencil"]')
     this.eraserButton = this.queryNode('[data-tool="eraser"]')
+    this.strokeWidthInput = this.queryNode('[data-width-input="stroke"]')
+    this.eraserScaleInput = this.queryNode('[data-width-input="eraser"]')
 
+    this.syncControlUIState()
     this.renderColorButtons()
   }
 
-  get serialization(): MagicCrayonSerialization {
+  get serialization(): Serialization {
     return this.serializationValue
   }
 
-  set serialization(value: MagicCrayonSerialization) {
+  set serialization(value: Serialization) {
     const next = assertSerialization(value)
 
     this.serializationValue = next
@@ -426,11 +147,11 @@ class MagicCrayon extends HTMLElement {
     }
   }
 
-  get colorPicker(): MagicCrayonColorPicker {
+  get colorPicker(): ColorPicker {
     return this.colorPickerValue
   }
 
-  set colorPicker(value: MagicCrayonColorPicker) {
+  set colorPicker(value: ColorPicker) {
     const next = assertColorPicker(value)
 
     this.colorPickerValue = next
@@ -440,11 +161,11 @@ class MagicCrayon extends HTMLElement {
     }
   }
 
-  get selectedCrayon(): MagicCrayonSelectedCrayon {
+  get selectedCrayon(): SelectedCrayon {
     return this.selectedCrayonValue
   }
 
-  set selectedCrayon(value: MagicCrayonSelectedCrayon) {
+  set selectedCrayon(value: SelectedCrayon) {
     const next = assertSelectedCrayon(value)
 
     this.selectedCrayonValue = next
@@ -455,11 +176,11 @@ class MagicCrayon extends HTMLElement {
     }
   }
 
-  get boundary(): MagicCrayonBoundary {
+  get boundary(): Boundary {
     return this.boundaryValue
   }
 
-  set boundary(value: MagicCrayonBoundary) {
+  set boundary(value: Boundary) {
     const next = assertBoundary(value)
 
     this.boundaryValue = next
@@ -467,6 +188,53 @@ class MagicCrayon extends HTMLElement {
 
     if (this.getAttribute('boundary') !== next) {
       this.setAttribute('boundary', next)
+    }
+  }
+
+  get strokeWidth(): number {
+    return this.strokeWidthValue
+  }
+
+  set strokeWidth(value: number) {
+    const next = assertStrokeWidth(value)
+
+    this.strokeWidthValue = next
+    this.syncLineWidthForActiveMode()
+    this.syncWidthControlValues()
+
+    if (this.getAttribute('stroke-width') !== String(next)) {
+      this.setAttribute('stroke-width', String(next))
+    }
+  }
+
+  get eraserScale(): number {
+    return this.eraserScaleValue
+  }
+
+  set eraserScale(value: number) {
+    const next = assertEraserScale(value)
+
+    this.eraserScaleValue = next
+    this.syncLineWidthForActiveMode()
+    this.syncWidthControlValues()
+
+    if (this.getAttribute('eraser-scale') !== String(next)) {
+      this.setAttribute('eraser-scale', String(next))
+    }
+  }
+
+  get widthControls(): WidthControls {
+    return this.widthControlsValue
+  }
+
+  set widthControls(value: WidthControls) {
+    const next = assertWidthControls(value)
+
+    this.widthControlsValue = next
+    this.wrap.dataset.widthControls = next
+
+    if (this.getAttribute('width-controls') !== next) {
+      this.setAttribute('width-controls', next)
     }
   }
 
@@ -487,14 +255,26 @@ class MagicCrayon extends HTMLElement {
       assertBoundary(value)
     }
 
+    if (qualifiedName === 'width-controls') {
+      assertWidthControls(value)
+    }
+
+    if (qualifiedName === 'stroke-width') {
+      parseStrokeWidth(value)
+    }
+
+    if (qualifiedName === 'eraser-scale') {
+      parseEraserScale(value)
+    }
+
     super.setAttribute(qualifiedName, value)
   }
 
-  get drawing(): MagicCrayonDrawingData | null {
+  get drawing(): DrawingData | null {
     return this.drawingValue
   }
 
-  set drawing(value: MagicCrayonDrawingData | null) {
+  set drawing(value: DrawingData | null) {
     this.drawingValue = value
 
     if (value) {
@@ -529,8 +309,25 @@ class MagicCrayon extends HTMLElement {
       this.boundaryValue = assertBoundary(this.getAttribute('boundary'))
     }
 
-    this.wrap.dataset.boundary = this.boundaryValue
-    this.colors.dataset.selectedCrayon = this.selectedCrayonValue
+    if (!this.hasAttribute('width-controls')) {
+      this.setAttribute('width-controls', DEFAULT_WIDTH_CONTROLS)
+    } else {
+      this.widthControlsValue = assertWidthControls(this.getAttribute('width-controls'))
+    }
+
+    if (!this.hasAttribute('stroke-width')) {
+      this.setAttribute('stroke-width', String(DEFAULT_STROKE_WIDTH))
+    } else {
+      this.strokeWidthValue = parseStrokeWidth(this.getAttribute('stroke-width'))
+    }
+
+    if (!this.hasAttribute('eraser-scale')) {
+      this.setAttribute('eraser-scale', String(DEFAULT_ERASER_SCALE))
+    } else {
+      this.eraserScaleValue = parseEraserScale(this.getAttribute('eraser-scale'))
+    }
+
+    this.syncControlUIState()
 
     const context = this.canvas.getContext('2d')
 
@@ -608,18 +405,45 @@ class MagicCrayon extends HTMLElement {
 
       return
     }
+
+    if (name === 'width-controls') {
+      if (newValue === 'on' || newValue === 'off') {
+        this.widthControlsValue = newValue
+        this.wrap.dataset.widthControls = this.widthControlsValue
+      }
+
+      return
+    }
+
+    if (name === 'stroke-width') {
+      this.strokeWidthValue =
+        newValue === null ? DEFAULT_STROKE_WIDTH : parseStrokeWidth(newValue)
+      this.syncLineWidthForActiveMode()
+      this.syncWidthControlValues()
+
+      return
+    }
+
+    if (name === 'eraser-scale') {
+      this.eraserScaleValue =
+        newValue === null ? DEFAULT_ERASER_SCALE : parseEraserScale(newValue)
+      this.syncLineWidthForActiveMode()
+      this.syncWidthControlValues()
+
+      return
+    }
   }
 
   async getDrawingData(
-    serialization: MagicCrayonSerialization = this.serializationValue,
-  ): Promise<MagicCrayonDrawingData> {
+    serialization: Serialization = this.serializationValue,
+  ): Promise<DrawingData> {
     const mode = assertSerialization(serialization)
     const ctx = this.requireContext2D()
 
     return ctx.getData(serializationToEnum[mode])
   }
 
-  async setDrawingData(data: MagicCrayonDrawingData): Promise<void> {
+  async setDrawingData(data: DrawingData): Promise<void> {
     this.drawingValue = data
 
     if (this.context2d) {
@@ -662,9 +486,7 @@ class MagicCrayon extends HTMLElement {
     this.colors.replaceChildren(
       ...COLORS.map(color => {
         const button = document.createElement('button')
-        const icon = crayonIconTemplate.content.firstElementChild?.cloneNode(
-          true,
-        ) as SVGElement | null
+        const icon = toSvgElement(crayonIcon.cloneNode(true))
 
         button.type = 'button'
         button.className = 'swatch'
@@ -683,11 +505,9 @@ class MagicCrayon extends HTMLElement {
           return button
         }
 
-        if (icon) {
-          icon.setAttribute('aria-hidden', 'true')
-          icon.setAttribute('focusable', 'false')
-          button.append(icon)
-        }
+        icon.setAttribute('aria-hidden', 'true')
+        icon.setAttribute('focusable', 'false')
+        button.append(icon)
 
         return button
       }),
@@ -709,7 +529,11 @@ class MagicCrayon extends HTMLElement {
     }
 
     const onTool = (event: Event) => {
-      const target = event.currentTarget as HTMLButtonElement
+      if (!isHTMLButtonElement(event.currentTarget)) {
+        return
+      }
+
+      const target = event.currentTarget
       const tool = target.dataset.tool
 
       if (tool === 'eraser') {
@@ -732,8 +556,17 @@ class MagicCrayon extends HTMLElement {
     }
 
     const onColor = (event: Event) => {
-      const target = event.target as HTMLElement
-      const button = target.closest<HTMLButtonElement>('.swatch')
+      if (!isElement(event.target)) {
+        return
+      }
+
+      const target = event.target
+      const button = target.closest('.swatch')
+
+      if (!(button instanceof HTMLButtonElement)) {
+        return
+      }
+
       const color = button?.dataset.color
 
       if (!color || !this.context2d) {
@@ -775,7 +608,7 @@ class MagicCrayon extends HTMLElement {
       const data = await this.getDrawingData()
 
       this.dispatchEvent(
-        new CustomEvent<MagicCrayonSaveDetail>('save', {
+        new CustomEvent<SaveDetail>('save', {
           bubbles: true,
           composed: true,
           detail: {
@@ -788,6 +621,30 @@ class MagicCrayon extends HTMLElement {
       )
     }
 
+    const onWidthInput = (event: Event) => {
+      if (!isHTMLInputElement(event.currentTarget)) {
+        return
+      }
+
+      const target = event.currentTarget
+      const kind = target.dataset.widthInput
+
+      if (kind !== 'stroke' && kind !== 'eraser') {
+        return
+      }
+
+      const value = Number(target.value)
+
+      if (kind === 'stroke') {
+        this.strokeWidth = value
+        this.dispatchWidthChange('stroke')
+        return
+      }
+
+      this.eraserScale = value
+      this.dispatchWidthChange('eraser')
+    }
+
     this.menuButton.addEventListener('click', onMenu)
     this.pencilButton.addEventListener('click', onTool)
     this.eraserButton.addEventListener('click', onTool)
@@ -795,6 +652,8 @@ class MagicCrayon extends HTMLElement {
     this.redoButton.addEventListener('click', onRedo)
     this.clearButton.addEventListener('click', onClear)
     this.saveButton.addEventListener('click', onSave)
+    this.strokeWidthInput.addEventListener('input', onWidthInput)
+    this.eraserScaleInput.addEventListener('input', onWidthInput)
 
     this.colors.addEventListener('click', onColor)
 
@@ -805,6 +664,12 @@ class MagicCrayon extends HTMLElement {
     this.teardown.push(() => this.redoButton.removeEventListener('click', onRedo))
     this.teardown.push(() => this.clearButton.removeEventListener('click', onClear))
     this.teardown.push(() => this.saveButton.removeEventListener('click', onSave))
+    this.teardown.push(() =>
+      this.strokeWidthInput.removeEventListener('input', onWidthInput),
+    )
+    this.teardown.push(() =>
+      this.eraserScaleInput.removeEventListener('input', onWidthInput),
+    )
     this.teardown.push(() => this.colors.removeEventListener('click', onColor))
   }
 
@@ -945,12 +810,12 @@ class MagicCrayon extends HTMLElement {
 
       ctx.pencilMode = Mode.DRAW
       ctx.compositing = Composites.DRAW
-      ctx.lineWidth = 5
+      ctx.lineWidth = this.strokeWidthValue
       ctx.strokeStyle = active
     } else {
       ctx.pencilMode = Mode.ERASE
       ctx.compositing = Composites.ERASE
-      ctx.lineWidth = 20
+      ctx.lineWidth = this.strokeWidthValue * this.eraserScaleValue
     }
 
     this.syncCanvasCursor()
@@ -973,6 +838,48 @@ class MagicCrayon extends HTMLElement {
     this.wrap.dataset.menuOpen = open ? 'true' : 'false'
     this.menuButton.setAttribute('aria-expanded', open ? 'true' : 'false')
   }
+
+  protected syncLineWidthForActiveMode(): void {
+    const ctx = this.context2d
+
+    if (!ctx || !this.activeMode) {
+      return
+    }
+
+    if (this.activeMode === Mode.DRAW) {
+      ctx.lineWidth = this.strokeWidthValue
+      return
+    }
+
+    ctx.lineWidth = this.strokeWidthValue * this.eraserScaleValue
+  }
+
+  protected syncWidthControlValues(): void {
+    this.strokeWidthInput.value = String(this.strokeWidthValue)
+    this.eraserScaleInput.value = String(this.eraserScaleValue)
+  }
+
+  protected syncControlUIState(): void {
+    this.wrap.dataset.boundary = this.boundaryValue
+    this.wrap.dataset.widthControls = this.widthControlsValue
+    this.colors.dataset.selectedCrayon = this.selectedCrayonValue
+    this.syncWidthControlValues()
+  }
+
+  protected dispatchWidthChange(source: 'stroke' | 'eraser'): void {
+    this.dispatchEvent(
+      new CustomEvent<WidthChangeDetail>('widthchange', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          strokeWidth: this.strokeWidthValue,
+          eraserScale: this.eraserScaleValue,
+          eraserWidth: this.strokeWidthValue * this.eraserScaleValue,
+          source,
+        },
+      }),
+    )
+  }
 }
 
 declare global {
@@ -981,19 +888,22 @@ declare global {
   }
 
   interface GlobalEventHandlersEventMap {
-    save: CustomEvent<MagicCrayonSaveDetail>
+    save: CustomEvent<SaveDetail>
     undoavailabilitychange: CustomEvent<AvailabilityDetail>
     redoavailabilitychange: CustomEvent<AvailabilityDetail>
+    widthchange: CustomEvent<WidthChangeDetail>
   }
 }
 
 export { MagicCrayon, TAG_NAME }
 export type {
   AvailabilityDetail,
-  MagicCrayonBoundary,
-  MagicCrayonColorPicker,
-  MagicCrayonDrawingData,
-  MagicCrayonSaveDetail,
-  MagicCrayonSelectedCrayon,
-  MagicCrayonSerialization,
+  Boundary,
+  ColorPicker,
+  DrawingData,
+  SaveDetail,
+  SelectedCrayon,
+  Serialization,
+  WidthControls,
+  WidthChangeDetail,
 }

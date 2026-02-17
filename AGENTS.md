@@ -64,6 +64,7 @@ Repo root commands:
 - Keep TypeScript strict; prefer precise types and narrowing over assertions.
 - Avoid `any`; use `unknown` + guards when needed.
 - Avoid TypeScript assertions by providing type predicates.
+- Avoid immediately invoked function expressions and favor helper functions.
 - Keep helper functions small and single-purpose.
 - Avoid broad refactors when implementing focused fixes.
 - Follow existing project formatting/linting conventions.

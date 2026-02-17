@@ -8,8 +8,12 @@ type StoryArgs = {
   colorPicker: 'crayon' | 'swatch'
   selectedCrayon: 'full' | 'clipped'
   boundary: 'on' | 'off'
+  widthControls: 'on' | 'off'
+  strokeWidth: number
+  eraserScale: number
   hostHeight: number
   onSave: (detail: unknown) => void
+  onWidthChange: (detail: unknown) => void
 }
 
 const meta: Meta<StoryArgs> = {
@@ -27,8 +31,12 @@ const meta: Meta<StoryArgs> = {
     colorPicker: 'crayon',
     selectedCrayon: 'full',
     boundary: 'on',
+    widthControls: 'off',
+    strokeWidth: 5,
+    eraserScale: 1,
     hostHeight: 640,
     onSave: fn(),
+    onWidthChange: fn(),
   },
   argTypes: {
     serialization: {
@@ -53,6 +61,22 @@ const meta: Meta<StoryArgs> = {
       control: { type: 'inline-radio' },
       options: ['on', 'off'],
     },
+    widthControls: {
+      name: 'width-controls',
+      description: 'Toggle the built-in width sliders visibility.',
+      control: { type: 'inline-radio' },
+      options: ['on', 'off'],
+    },
+    strokeWidth: {
+      name: 'stroke-width',
+      description: 'Base line width used for drawing.',
+      control: { type: 'range', min: 1, max: 48, step: 1 },
+    },
+    eraserScale: {
+      name: 'eraser-scale',
+      description: 'Eraser width multiplier applied to stroke width.',
+      control: { type: 'range', min: 1, max: 6, step: 0.1 },
+    },
     hostHeight: {
       control: { type: 'range', min: 360, max: 1000, step: 10 },
     },
@@ -63,14 +87,25 @@ const meta: Meta<StoryArgs> = {
         category: 'events',
       },
     },
+    onWidthChange: {
+      name: 'widthchange',
+      action: 'widthchange',
+      table: {
+        category: 'events',
+      },
+    },
   },
   render: ({
     serialization,
     colorPicker,
     selectedCrayon,
     boundary,
+    widthControls,
+    strokeWidth,
+    eraserScale,
     hostHeight,
     onSave,
+    onWidthChange,
   }) => {
     const host = document.createElement('div')
     const element = document.createElement('magic-crayon')
@@ -85,10 +120,18 @@ const meta: Meta<StoryArgs> = {
     element.setAttribute('color-picker', colorPicker)
     element.setAttribute('selected-crayon', selectedCrayon)
     element.setAttribute('boundary', boundary)
+    element.setAttribute('width-controls', widthControls)
+    element.setAttribute('stroke-width', String(strokeWidth))
+    element.setAttribute('eraser-scale', String(eraserScale))
     element.addEventListener('save', event => {
       const customEvent = event as CustomEvent
 
       onSave(customEvent.detail)
+    })
+    element.addEventListener('widthchange', event => {
+      const customEvent = event as CustomEvent
+
+      onWidthChange(customEvent.detail)
     })
     host.append(element)
 

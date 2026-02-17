@@ -1,0 +1,61 @@
+<template id="magic-crayon-template">
+  <div class="wrap">
+    <div class="canvas-wrap">
+      <canvas part="canvas"></canvas>
+    </div>
+    <div class="controls" part="controls">
+      <button type="button" class="menu-toggle" data-action="menu" aria-expanded="false">
+        Tools
+      </button>
+      <div class="panel">
+        <div class="panel-main">
+          <div class="left">
+            <button type="button" class="tool" data-tool="pencil" aria-pressed="false">
+              Pencil
+            </button>
+            <button type="button" class="tool" data-tool="eraser" aria-pressed="false">
+              Eraser
+            </button>
+            <div class="colors" role="group" aria-label="Pencil colors"></div>
+          </div>
+          <div class="actions">
+            <button type="button" class="clear" data-action="clear">Clear</button>
+            <button type="button" data-action="undo" disabled>Undo</button>
+            <button type="button" data-action="redo" disabled>Redo</button>
+            <button type="button" class="save" data-action="save">Save</button>
+          </div>
+        </div>
+        <div class="width-controls-region" part="width-controls">
+          <slot name="width-controls">
+            <div class="width-controls-default">
+              <label class="width-control" for="stroke-width-input">
+                <span>Stroke</span>
+                <input
+                  id="stroke-width-input"
+                  class="width-slider"
+                  data-width-input="stroke"
+                  type="range"
+                  min="1"
+                  max="48"
+                  step="1"
+                />
+              </label>
+              <label class="width-control" for="eraser-scale-input">
+                <span>Eraser</span>
+                <input
+                  id="eraser-scale-input"
+                  class="width-slider"
+                  data-width-input="eraser"
+                  type="range"
+                  min="1"
+                  max="6"
+                  step="0.1"
+                />
+              </label>
+            </div>
+          </slot>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

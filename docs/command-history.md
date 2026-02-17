@@ -91,6 +91,9 @@ Do not remove or rename existing fields. Keep consumer compatibility.
 3. Existing bitmap save/load flows continue to work unchanged.
 4. No breaking changes to existing public method signatures/events.
 5. Tests cover command replay across at least two viewport sizes.
+6. Width controls fidelity: when `stroke-width` and `eraser-scale` are configured,
+   undo of erased content restores original drawn stroke geometry/width instead of
+   replaying erase-width artifacts.
 
 ## Test Plan
 
@@ -99,6 +102,7 @@ Add/extend tests under `test/` for:
 - draw → resize → undo → redo ordering
 - clear + resize persistence
 - erase stroke replay after resize
+- erase undo fidelity when `eraser-scale` is greater than `1`
 - bitmap-only import compatibility
 - document export/import (if added)
 
