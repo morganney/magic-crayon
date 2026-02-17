@@ -29,7 +29,7 @@ It ships as a native custom element: `<magic-crayon>`.
   - `width-controls` (`off` default)
   - replaceable via `slot="width-controls"`
 - Optional action control presentation:
-  - `control-style`: `text` (default) or `icon`
+  - `control-style`: `icon` (default) or `text`
 - Configurable canvas cursors by mode:
   - `draw-cursor` (default: `crosshair`)
   - `erase-cursor` (default: `cell`)
@@ -78,7 +78,7 @@ if (!customElements.get(TAG_NAME)) {
   color-picker="crayon"
   selected-crayon="full"
   boundary="on"
-  control-style="text"
+  control-style="icon"
   draw-cursor="crosshair"
   erase-cursor="cell"
   width-controls="off"
@@ -104,7 +104,7 @@ if (!customElements.get(TAG_NAME)) {
 - `color-picker`: `crayon | swatch` (default: `crayon`)
 - `selected-crayon`: `full | clipped` (default: `full`)
 - `boundary`: `on | off` (default: `on`)
-- `control-style`: `text | icon` (default: `text`)
+- `control-style`: `text | icon` (default: `icon`)
 - `draw-cursor`: any valid CSS cursor string (default: `crosshair`)
 - `erase-cursor`: any valid CSS cursor string (default: `cell`)
 - `width-controls`: `on | off` (default: `off`)

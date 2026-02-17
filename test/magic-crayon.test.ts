@@ -106,24 +106,31 @@ describe('magic-crayon', () => {
     expect(wrap?.getAttribute('data-width-controls')).toBe('on')
   })
 
-  it('defaults control style to text and allows icon mode', () => {
+  it('defaults control style to icon and allows switching to text mode', () => {
     const node = createMagicCrayon()
     const clear = node.shadowRoot?.querySelector<HTMLButtonElement>(
       '[data-action="clear"]',
     )
+    const undo = node.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="undo"]')
+    const redo = node.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="redo"]')
 
-    expect(node.controlStyle).toBe('text')
-    expect(node.getAttribute('control-style')).toBe('text')
-    expect(clear?.textContent).toBe('Clear')
-    expect(clear?.querySelector('svg')).toBeNull()
-
-    node.controlStyle = 'icon'
-
+    expect(node.controlStyle).toBe('icon')
     expect(node.getAttribute('control-style')).toBe('icon')
     expect(clear?.textContent?.trim()).toBe('')
     expect(clear?.querySelector('svg')).toBeTruthy()
     expect(clear?.getAttribute('aria-label')).toBe('Clear')
-    expect(clear?.classList.contains('is-icon')).toBe(true)
+    expect(clear?.getAttribute('title')).toBe('trash')
+    expect(undo?.getAttribute('title')).toBe('undo')
+    expect(redo?.getAttribute('title')).toBe('redo')
+
+    node.controlStyle = 'text'
+
+    expect(node.getAttribute('control-style')).toBe('text')
+    expect(clear?.textContent).toBe('Clear')
+    expect(clear?.querySelector('svg')).toBeNull()
+    expect(clear?.getAttribute('aria-label')).toBeNull()
+    expect(clear?.getAttribute('title')).toBe('trash')
+    expect(clear?.classList.contains('is-icon')).toBe(false)
   })
 
   it('defaults stroke-width and eraser-scale and applies mode-specific line width', () => {

@@ -1,6 +1,6 @@
 import { Composites, Context2D, Mode } from './context2d.js'
 import type { CustomNumberEventListener } from './context2d.js'
-import pencilSvg from '../assets/source/pencil.svg?raw'
+import pencilSvg from '../assets/pencil.svg?raw'
 import trashSvg from '../assets/trash.svg?raw'
 import undoSvg from '../assets/undo.svg?raw'
 import templateHtml from './template.html?raw'
@@ -44,7 +44,7 @@ const DEFAULT_COLOR_PICKER: ColorPicker = 'crayon'
 const DEFAULT_SELECTED_CRAYON: SelectedCrayon = 'full'
 const DEFAULT_BOUNDARY: Boundary = 'on'
 const DEFAULT_WIDTH_CONTROLS: WidthControls = 'off'
-const DEFAULT_CONTROL_STYLE: ControlStyle = 'text'
+const DEFAULT_CONTROL_STYLE: ControlStyle = 'icon'
 const DEFAULT_STROKE_WIDTH = 5
 const DEFAULT_ERASER_SCALE = 1
 const DEFAULT_DRAW_CURSOR = 'crosshair'
@@ -954,9 +954,11 @@ class MagicCrayon extends HTMLElement {
   protected setButtonLabel(
     button: HTMLButtonElement,
     label: string,
+    title: string,
     icon: SVGElement | null,
   ): void {
     button.textContent = ''
+    button.setAttribute('title', title)
 
     if (this.controlStyleValue === 'icon' && icon) {
       const svg = toSvgElement(icon.cloneNode(true))
@@ -975,9 +977,9 @@ class MagicCrayon extends HTMLElement {
   }
 
   protected syncControlButtonContent(): void {
-    this.setButtonLabel(this.clearButton, 'Clear', trashIcon)
-    this.setButtonLabel(this.undoButton, 'Undo', undoIcon)
-    this.setButtonLabel(this.redoButton, 'Redo', undoIcon)
+    this.setButtonLabel(this.clearButton, 'Clear', 'trash', trashIcon)
+    this.setButtonLabel(this.undoButton, 'Undo', 'undo', undoIcon)
+    this.setButtonLabel(this.redoButton, 'Redo', 'redo', undoIcon)
 
     if (this.controlStyleValue === 'icon') {
       this.redoButton.classList.add('is-mirrored')

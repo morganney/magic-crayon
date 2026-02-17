@@ -34,7 +34,7 @@ const meta: Meta<StoryArgs> = {
     colorPicker: 'crayon',
     selectedCrayon: 'full',
     boundary: 'on',
-    controlStyle: 'text',
+    controlStyle: 'icon',
     drawCursor: 'crosshair',
     eraseCursor: 'cell',
     widthControls: 'off',
