@@ -143,6 +143,33 @@ describe('magic-crayon', () => {
     expect(clear?.classList.contains('is-icon')).toBe(false)
   })
 
+  it('reverts control style to default when control-style attribute is removed', () => {
+    const node = createMagicCrayon()
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
+    const clear = node.shadowRoot?.querySelector<HTMLButtonElement>(
+      '[data-action="clear"]',
+    )
+
+    expect(eraser && clear).toBeTruthy()
+
+    node.controlStyle = 'text'
+
+    expect(node.controlStyle).toBe('text')
+    expect(node.getAttribute('control-style')).toBe('text')
+    expect(eraser?.querySelector('svg')).toBeNull()
+    expect(clear?.querySelector('svg')).toBeNull()
+
+    node.removeAttribute('control-style')
+
+    expect(node.controlStyle).toBe('icon')
+    expect(node.getAttribute('control-style')).toBeNull()
+    expect(eraser?.querySelector('svg')).toBeTruthy()
+    expect(eraser?.getAttribute('aria-label')).toBe('Eraser')
+    expect(clear?.querySelector('svg')).toBeTruthy()
+    expect(clear?.getAttribute('aria-label')).toBe('Clear')
+  })
+
   it('defaults stroke-width and eraser-scale and applies mode-specific line width', () => {
     const node = createMagicCrayon()
     const swatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')

@@ -492,10 +492,9 @@ class MagicCrayon extends HTMLElement {
     }
 
     if (name === 'control-style') {
-      if (newValue === 'text' || newValue === 'icon') {
-        this.controlStyleValue = newValue
-        this.syncControlButtonContent()
-      }
+      this.controlStyleValue =
+        newValue === 'text' || newValue === 'icon' ? newValue : DEFAULT_CONTROL_STYLE
+      this.syncControlButtonContent()
 
       return
     }
