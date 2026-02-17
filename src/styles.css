@@ -1,5 +1,6 @@
 :host {
   --magic-crayon-font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --magic-crayon-controls-min-height: auto;
   --magic-crayon-controls-bg: #f7f7f7;
   --magic-crayon-panel-bg-open: #ffffff;
   --magic-crayon-boundary-color: #c9c9c9;
@@ -67,8 +68,9 @@ canvas {
   justify-content: flex-start;
   gap: 16px;
   padding: 8px 16px;
-  min-height: 60px;
+  min-height: var(--magic-crayon-controls-min-height, auto);
   min-width: 0;
+  border-top: 1px solid var(--magic-crayon-boundary-color);
   background-color: var(--magic-crayon-controls-bg);
   font-family: var(--magic-crayon-font-family);
 }

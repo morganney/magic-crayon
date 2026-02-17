@@ -21,6 +21,7 @@ The component keeps behavior APIs (attributes/properties/events) separate from v
 
 ### Surfaces and Layout
 
+- `--magic-crayon-controls-min-height`
 - `--magic-crayon-controls-bg`
 - `--magic-crayon-panel-bg-open`
 - `--magic-crayon-boundary-color`
@@ -52,6 +53,7 @@ If your app already has semantic tokens (for example `--color-surface`, `--color
 ### Example Mapping
 
 - **Surface**
+  - `--magic-crayon-controls-min-height`
   - `--magic-crayon-controls-bg`
   - `--magic-crayon-panel-bg-open`
   - `--magic-crayon-boundary-bg`
@@ -94,6 +96,7 @@ If your app already has semantic tokens (for example `--color-surface`, `--color
 
 magic-crayon {
   --magic-crayon-font-family: var(--ds-font-sans);
+  --magic-crayon-controls-min-height: auto;
   --magic-crayon-controls-bg: var(--ds-surface);
   --magic-crayon-panel-bg-open: var(--ds-surface-2);
   --magic-crayon-boundary-color: var(--ds-border);
