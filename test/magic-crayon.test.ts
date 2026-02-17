@@ -135,13 +135,12 @@ describe('magic-crayon', () => {
 
   it('defaults stroke-width and eraser-scale and applies mode-specific line width', () => {
     const node = createMagicCrayon()
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const swatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
     const eraser =
       node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
     const context2d = (node as unknown as { context2d?: { lineWidth: number } }).context2d
 
-    expect(pencil && eraser && context2d).toBeTruthy()
+    expect(swatch && eraser && context2d).toBeTruthy()
     expect(node.strokeWidth).toBe(5)
     expect(node.eraserScale).toBe(1)
     expect(node.getAttribute('stroke-width')).toBe('5')
@@ -150,20 +149,19 @@ describe('magic-crayon', () => {
     node.strokeWidth = 6
     node.eraserScale = 1.5
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(context2d?.lineWidth).toBe(6)
 
     eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(context2d?.lineWidth).toBe(9)
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(context2d?.lineWidth).toBe(6)
   })
 
   it('resets stroke-width and eraser-scale to defaults when attributes are removed', () => {
     const node = createMagicCrayon()
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const swatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
     const eraser =
       node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
     const context2d = (node as unknown as { context2d?: { lineWidth: number } }).context2d
@@ -174,7 +172,7 @@ describe('magic-crayon', () => {
       '[data-width-input="eraser"]',
     )
 
-    expect(pencil && eraser && context2d && strokeSlider && eraserSlider).toBeTruthy()
+    expect(swatch && eraser && context2d && strokeSlider && eraserSlider).toBeTruthy()
 
     node.strokeWidth = 9
     node.eraserScale = 2
@@ -192,7 +190,7 @@ describe('magic-crayon', () => {
     expect(strokeSlider?.value).toBe('5')
     expect(eraserSlider?.value).toBe('1')
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(context2d?.lineWidth).toBe(5)
 
     eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -326,11 +324,10 @@ describe('magic-crayon', () => {
   it('emits undo availability event after drawing', async () => {
     const node = createMagicCrayon()
     const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const swatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
 
     expect(canvas).toBeTruthy()
-    expect(pencil).toBeTruthy()
+    expect(swatch).toBeTruthy()
 
     const eventPromise = new Promise<CustomEvent<AvailabilityDetail>>(resolve => {
       node.addEventListener(
@@ -342,7 +339,7 @@ describe('magic-crayon', () => {
       )
     })
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
     canvas?.dispatchEvent(
       new PointerEvent('pointerdown', {
@@ -514,8 +511,6 @@ describe('magic-crayon', () => {
   it('supports eraser, clear, undo, redo, and pointer capture release paths', async () => {
     const node = createMagicCrayon()
     const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
     const eraser =
       node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
     const clear = node.shadowRoot?.querySelector<HTMLButtonElement>(
@@ -525,13 +520,13 @@ describe('magic-crayon', () => {
     const redo = node.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="redo"]')
     const swatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
 
-    expect(canvas && pencil && eraser && clear && undo && redo && swatch).toBeTruthy()
+    expect(canvas && eraser && clear && undo && redo && swatch).toBeTruthy()
 
     eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(eraser?.getAttribute('aria-pressed')).toBe('true')
 
     swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
 
     const releaseSpy = vi.fn()
 
@@ -590,31 +585,31 @@ describe('magic-crayon', () => {
 
   it('returns early for non-standard ui handler event payloads', () => {
     const node = document.createElement('magic-crayon') as MagicCrayon
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
     const colors = node.shadowRoot?.querySelector<HTMLElement>('.colors')
     const strokeInput = node.shadowRoot?.querySelector<HTMLInputElement>(
       '[data-width-input="stroke"]',
     )
 
-    expect(pencil && colors && strokeInput).toBeTruthy()
+    expect(eraser && colors && strokeInput).toBeTruthy()
 
     let toolHandler: ((event: Event) => void) | undefined
     let colorHandler: ((event: Event) => void) | undefined
     let widthHandler: ((event: Event) => void) | undefined
 
-    const originalPencilAdd = pencil?.addEventListener.bind(pencil)
+    const originalEraserAdd = eraser?.addEventListener.bind(eraser)
     const originalColorsAdd = colors?.addEventListener.bind(colors)
     const originalStrokeAdd = strokeInput?.addEventListener.bind(strokeInput)
 
-    if (pencil && originalPencilAdd) {
-      vi.spyOn(pencil, 'addEventListener').mockImplementation(
+    if (eraser && originalEraserAdd) {
+      vi.spyOn(eraser, 'addEventListener').mockImplementation(
         (type, listener, options) => {
           if (type === 'click') {
             toolHandler = listener as (event: Event) => void
           }
 
-          return originalPencilAdd(type, listener as EventListener, options)
+          return originalEraserAdd(type, listener as EventListener, options)
         },
       )
     }
@@ -689,54 +684,54 @@ describe('magic-crayon', () => {
   it('ignores color clicks that do not target a swatch', () => {
     const node = createMagicCrayon()
     const colors = node.shadowRoot?.querySelector<HTMLElement>('.colors')
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
 
     expect(colors).toBeTruthy()
-    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
 
     colors?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
-    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
   })
 
   it('selects a crayon when click originates from inner svg element', () => {
     const node = createMagicCrayon()
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
     const swatches = node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.swatch')
     const targetSwatch = swatches?.item(2)
     const targetSvg = targetSwatch?.querySelector('svg')
 
-    expect(pencil && targetSwatch && targetSvg).toBeTruthy()
-    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    expect(eraser && targetSwatch && targetSvg).toBeTruthy()
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
     expect(targetSwatch?.getAttribute('aria-pressed')).toBe('false')
 
     targetSvg?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
-    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
     expect(targetSwatch?.getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('allows toggling an active tool off', () => {
+  it('allows toggling an active eraser tool off', () => {
     const node = createMagicCrayon()
     const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
     const undo = node.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="undo"]')
     let undoEventCount = 0
 
-    expect(canvas && pencil && undo).toBeTruthy()
+    expect(canvas && eraser && undo).toBeTruthy()
 
     node.addEventListener('undoavailabilitychange', () => {
       undoEventCount += 1
     })
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(eraser?.getAttribute('aria-pressed')).toBe('true')
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
 
     canvas?.dispatchEvent(
       new PointerEvent('pointerdown', {
@@ -770,24 +765,24 @@ describe('magic-crayon', () => {
   it('allows toggling drawing off by clicking the active swatch', () => {
     const node = createMagicCrayon()
     const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
     const swatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
     const undo = node.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="undo"]')
     let undoEventCount = 0
 
-    expect(canvas && pencil && swatch && undo).toBeTruthy()
+    expect(canvas && eraser && swatch && undo).toBeTruthy()
 
     node.addEventListener('undoavailabilitychange', () => {
       undoEventCount += 1
     })
 
     swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
     expect(swatch?.getAttribute('aria-pressed')).toBe('true')
 
     swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
     expect(swatch?.getAttribute('aria-pressed')).toBe('false')
 
     canvas?.dispatchEvent(
@@ -819,51 +814,46 @@ describe('magic-crayon', () => {
     expect(undo?.disabled).toBe(true)
   })
 
-  it('keeps swatch pressed state in sync when toggling draw mode', () => {
+  it('keeps swatch pressed state in sync when toggling draw and erase modes', () => {
     const node = createMagicCrayon()
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
     const swatches = node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.swatch')
     const swatch = swatches?.item(1)
 
-    expect(pencil && swatch).toBeTruthy()
+    expect(eraser && swatch).toBeTruthy()
 
     swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
     expect(swatch?.getAttribute('aria-pressed')).toBe('true')
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(eraser?.getAttribute('aria-pressed')).toBe('true')
     expect(swatch?.getAttribute('aria-pressed')).toBe('false')
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
     expect(swatch?.getAttribute('aria-pressed')).toBe('true')
 
     swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(pencil?.getAttribute('aria-pressed')).toBe('false')
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
     expect(swatch?.getAttribute('aria-pressed')).toBe('false')
-
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
-    expect(swatch?.getAttribute('aria-pressed')).toBe('true')
   })
 
   it('keeps canvas cursor in sync with active drawing mode', () => {
     const node = createMagicCrayon()
     const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const swatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
     const eraser =
       node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
 
-    expect(canvas && pencil && eraser).toBeTruthy()
+    expect(canvas && swatch && eraser).toBeTruthy()
     expect(canvas?.style.cursor).toBe('default')
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(canvas?.style.cursor).toBe('crosshair')
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(canvas?.style.cursor).toBe('default')
 
     eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -876,19 +866,18 @@ describe('magic-crayon', () => {
   it('supports draw-cursor and erase-cursor overrides', () => {
     const node = createMagicCrayon()
     const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const swatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
     const eraser =
       node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
 
-    expect(canvas && pencil && eraser).toBeTruthy()
+    expect(canvas && swatch && eraser).toBeTruthy()
     expect(node.drawCursor).toBe('crosshair')
     expect(node.eraseCursor).toBe('cell')
 
     node.drawCursor = 'pointer'
     node.eraseCursor = 'grab'
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(canvas?.style.cursor).toBe('pointer')
 
     eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -897,15 +886,14 @@ describe('magic-crayon', () => {
 
   it('syncs context line width when width values change in active modes', () => {
     const node = createMagicCrayon()
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const swatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
     const eraser =
       node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
     const context2d = (node as unknown as { context2d?: { lineWidth: number } }).context2d
 
-    expect(pencil && eraser && context2d).toBeTruthy()
+    expect(swatch && eraser && context2d).toBeTruthy()
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     node.strokeWidth = 8
     expect(context2d?.lineWidth).toBe(8)
 
@@ -917,20 +905,17 @@ describe('magic-crayon', () => {
     expect(context2d?.lineWidth).toBe(6)
   })
 
-  it('selects default black swatch when entering pencil mode from fresh state', () => {
+  it('enters draw mode when selecting a swatch from fresh state', () => {
     const node = createMagicCrayon()
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
     const swatches = node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.swatch')
     const blackSwatch = swatches?.item(0)
     const yellowSwatch = swatches?.item(1)
 
-    expect(pencil && blackSwatch && yellowSwatch).toBeTruthy()
+    expect(blackSwatch && yellowSwatch).toBeTruthy()
     expect(blackSwatch?.getAttribute('aria-pressed')).toBe('false')
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    blackSwatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
-    expect(pencil?.getAttribute('aria-pressed')).toBe('true')
     expect(blackSwatch?.getAttribute('aria-pressed')).toBe('true')
     expect(yellowSwatch?.getAttribute('aria-pressed')).toBe('false')
   })
@@ -939,10 +924,10 @@ describe('magic-crayon', () => {
     const node = createMagicCrayon()
     const wrap = node.shadowRoot?.querySelector<HTMLElement>('.wrap')
     const menu = node.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="menu"]')
-    const pencil =
-      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="pencil"]')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
 
-    expect(wrap && menu && pencil).toBeTruthy()
+    expect(wrap && menu && eraser).toBeTruthy()
     expect(wrap?.dataset.menuOpen).toBe('false')
     expect(menu?.getAttribute('aria-expanded')).toBe('false')
 
@@ -951,7 +936,7 @@ describe('magic-crayon', () => {
     expect(wrap?.dataset.menuOpen).toBe('true')
     expect(menu?.getAttribute('aria-expanded')).toBe('true')
 
-    pencil?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
     expect(wrap?.dataset.menuOpen).toBe('true')
     expect(menu?.getAttribute('aria-expanded')).toBe('true')

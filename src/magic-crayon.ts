@@ -92,7 +92,6 @@ class MagicCrayon extends HTMLElement {
   protected readonly redoButton: HTMLButtonElement
   protected readonly saveButton: HTMLButtonElement
   protected readonly clearButton: HTMLButtonElement
-  protected readonly pencilButton: HTMLButtonElement
   protected readonly eraserButton: HTMLButtonElement
   protected readonly strokeWidthInput: HTMLInputElement
   protected readonly eraserScaleInput: HTMLInputElement
@@ -141,7 +140,6 @@ class MagicCrayon extends HTMLElement {
     this.redoButton = this.queryNode('[data-action="redo"]')
     this.saveButton = this.queryNode('[data-action="save"]')
     this.clearButton = this.queryNode('[data-action="clear"]')
-    this.pencilButton = this.queryNode('[data-tool="pencil"]')
     this.eraserButton = this.queryNode('[data-tool="eraser"]')
     this.strokeWidthInput = this.queryNode('[data-width-input="stroke"]')
     this.eraserScaleInput = this.queryNode('[data-width-input="eraser"]')
@@ -651,15 +649,6 @@ class MagicCrayon extends HTMLElement {
 
         this.syncToolState(Mode.ERASE)
       }
-
-      if (tool === 'pencil') {
-        if (this.activeMode === Mode.DRAW) {
-          this.setInactiveToolState()
-          return
-        }
-
-        this.syncToolState(Mode.DRAW)
-      }
     }
 
     const onColor = (event: Event) => {
@@ -753,7 +742,6 @@ class MagicCrayon extends HTMLElement {
     }
 
     this.menuButton.addEventListener('click', onMenu)
-    this.pencilButton.addEventListener('click', onTool)
     this.eraserButton.addEventListener('click', onTool)
     this.undoButton.addEventListener('click', onUndo)
     this.redoButton.addEventListener('click', onRedo)
@@ -765,7 +753,6 @@ class MagicCrayon extends HTMLElement {
     this.colors.addEventListener('click', onColor)
 
     this.teardown.push(() => this.menuButton.removeEventListener('click', onMenu))
-    this.teardown.push(() => this.pencilButton.removeEventListener('click', onTool))
     this.teardown.push(() => this.eraserButton.removeEventListener('click', onTool))
     this.teardown.push(() => this.undoButton.removeEventListener('click', onUndo))
     this.teardown.push(() => this.redoButton.removeEventListener('click', onRedo))
@@ -905,7 +892,6 @@ class MagicCrayon extends HTMLElement {
     const isDraw = mode === Mode.DRAW
 
     this.activeMode = mode
-    this.pencilButton.setAttribute('aria-pressed', isDraw ? 'true' : 'false')
     this.eraserButton.setAttribute('aria-pressed', isDraw ? 'false' : 'true')
 
     if (isDraw) {
@@ -931,7 +917,6 @@ class MagicCrayon extends HTMLElement {
 
   protected setInactiveToolState(): void {
     this.activeMode = null
-    this.pencilButton.setAttribute('aria-pressed', 'false')
     this.eraserButton.setAttribute('aria-pressed', 'false')
     this.syncCanvasCursor()
     this.syncColorSelectionState()
