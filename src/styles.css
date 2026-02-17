@@ -1,4 +1,23 @@
 :host {
+  --magic-crayon-font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --magic-crayon-controls-min-height: auto;
+  --magic-crayon-controls-bg: #f7f7f7;
+  --magic-crayon-panel-bg-open: #ffffff;
+  --magic-crayon-boundary-color: #c9c9c9;
+  --magic-crayon-boundary-bg: #e9e9e9;
+  --magic-crayon-canvas-bg: #ffffff;
+  --magic-crayon-button-bg: #1da7e1;
+  --magic-crayon-button-border: #1da7e1;
+  --magic-crayon-button-color: #ffffff;
+  --magic-crayon-button-disabled-bg: #9b9b9b;
+  --magic-crayon-button-disabled-border: #9b9b9b;
+  --magic-crayon-tool-active-bg: #000000;
+  --magic-crayon-tool-active-border: #000000;
+  --magic-crayon-clear-color: #d7282f;
+  --magic-crayon-clear-bg: #ffffff;
+  --magic-crayon-width-label-color: #444444;
+  --magic-crayon-swatch-selected: #0b63ce;
+  --magic-crayon-swatch-border: #dddddd;
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -22,9 +41,9 @@
 }
 
 .wrap[data-boundary='on'] {
-  border: 1px solid #c9c9c9;
+  border: 1px solid var(--magic-crayon-boundary-color);
   border-radius: 16px;
-  background-color: #e9e9e9;
+  background-color: var(--magic-crayon-boundary-bg);
 }
 
 .canvas-wrap {
@@ -40,7 +59,7 @@ canvas {
   border: none;
   touch-action: none;
   cursor: default;
-  background-color: #ffffff;
+  background-color: var(--magic-crayon-canvas-bg);
 }
 
 .controls {
@@ -49,9 +68,11 @@ canvas {
   justify-content: flex-start;
   gap: 16px;
   padding: 8px 16px;
-  min-height: 60px;
+  min-height: var(--magic-crayon-controls-min-height, auto);
   min-width: 0;
-  background-color: #f7f7f7;
+  border-top: 1px solid var(--magic-crayon-boundary-color);
+  background-color: var(--magic-crayon-controls-bg);
+  font-family: var(--magic-crayon-font-family);
 }
 
 .panel {
@@ -106,7 +127,7 @@ canvas {
   gap: 6px;
   min-width: 0;
   font-size: 12px;
-  color: #444444;
+  color: var(--magic-crayon-width-label-color);
 }
 
 .width-slider {
@@ -128,28 +149,29 @@ button {
   border-radius: 999px;
   font-weight: 700;
   cursor: pointer;
-  background-color: #1da7e1;
-  border-color: #1da7e1;
-  color: #ffffff;
+  background-color: var(--magic-crayon-button-bg);
+  border-color: var(--magic-crayon-button-border);
+  color: var(--magic-crayon-button-color);
   padding: 6px 14px;
   font-size: 14px;
   line-height: 1;
+  font-family: var(--magic-crayon-font-family, system-ui, sans-serif);
 }
 
 button:disabled {
   cursor: not-allowed;
-  background-color: #9b9b9b;
-  border-color: #9b9b9b;
+  background-color: var(--magic-crayon-button-disabled-bg);
+  border-color: var(--magic-crayon-button-disabled-border);
 }
 
 .tool[aria-pressed='true'] {
-  background-color: #000000;
-  border-color: #000000;
+  background-color: var(--magic-crayon-tool-active-bg);
+  border-color: var(--magic-crayon-tool-active-border);
 }
 
 .menu-toggle[aria-expanded='true'] {
-  background-color: #000000;
-  border-color: #000000;
+  background-color: var(--magic-crayon-tool-active-bg);
+  border-color: var(--magic-crayon-tool-active-border);
 }
 
 .swatch {
@@ -217,20 +239,57 @@ button:disabled {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 2px solid #dddddd;
+  border: 2px solid var(--magic-crayon-swatch-border);
   padding: 0;
   background: transparent;
 }
 
 .colors[data-picker='swatch'] .swatch[aria-pressed='true'] {
-  border-color: #0b63ce;
-  box-shadow: inset 0 0 0 2px #0b63ce;
+  border-color: var(--magic-crayon-swatch-selected);
+  box-shadow: inset 0 0 0 2px var(--magic-crayon-swatch-selected);
 }
 
 .clear {
-  color: #d7282f;
-  border-color: #d7282f;
-  background-color: #ffffff;
+  color: var(--magic-crayon-clear-color);
+  border-color: var(--magic-crayon-clear-color);
+  background-color: var(--magic-crayon-clear-bg);
+}
+
+button.is-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+button.is-icon > svg {
+  width: 18px;
+  height: 18px;
+}
+
+button.is-icon.is-mirrored > svg {
+  transform: scaleX(-1);
+}
+
+.tool.is-icon[data-tool='eraser'] {
+  background-color: transparent;
+  border-color: transparent;
+  border-width: 0;
+  border-radius: 0;
+  width: auto;
+  height: auto;
+}
+
+.tool.is-icon[data-tool='eraser'][aria-pressed='true'] {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.tool.is-icon[data-tool='eraser'] > svg {
+  width: 36px;
+  height: 36px;
 }
 
 @container magic-crayon (max-width: 768px) {
@@ -287,10 +346,10 @@ button:disabled {
   .wrap[data-menu-open='true'] .panel {
     grid-area: panel;
     gap: 8px;
-    border: 1px solid #dddddd;
+    border: 1px solid var(--magic-crayon-swatch-border);
     border-radius: 12px;
     padding: 8px;
-    background-color: #ffffff;
+    background-color: var(--magic-crayon-panel-bg-open);
   }
 
   .wrap[data-menu-open='true'] .panel-main {

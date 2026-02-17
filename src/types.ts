@@ -5,6 +5,8 @@ export type ColorPicker = 'crayon' | 'swatch'
 export type SelectedCrayon = 'full' | 'clipped'
 export type Boundary = 'on' | 'off'
 export type WidthControls = 'on' | 'off'
+export type ControlStyle = 'text' | 'icon'
+export type CursorStyle = string
 export type DrawingData = Blob | string
 
 export type SaveDetail = {

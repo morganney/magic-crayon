@@ -1,11 +1,15 @@
 import { Composites, Context2D, Mode } from './context2d.js'
 import type { CustomNumberEventListener } from './context2d.js'
-import pencilSvg from '../assets/source/pencil.svg?raw'
+import pencilSvg from '../assets/pencil.svg?raw'
+import eraserSvg from '../assets/eraser.svg?raw'
+import trashSvg from '../assets/trash.svg?raw'
+import undoSvg from '../assets/undo.svg?raw'
 import templateHtml from './template.html?raw'
 import stylesCss from './styles.css?raw'
 import {
   assertBoundary,
   assertColorPicker,
+  assertControlStyle,
   assertEraserScale,
   assertSelectedCrayon,
   assertSerialization,
@@ -14,7 +18,9 @@ import {
   isElement,
   isHTMLButtonElement,
   isHTMLInputElement,
+  parseAssetIcon,
   parseCrayonIcon,
+  parseActionIcon,
   parseEraserScale,
   parseStrokeWidth,
   parseTemplateNode,
@@ -25,6 +31,8 @@ import type {
   AvailabilityDetail,
   Boundary,
   ColorPicker,
+  ControlStyle,
+  CursorStyle,
   DrawingData,
   SaveDetail,
   SelectedCrayon,
@@ -38,8 +46,11 @@ const DEFAULT_COLOR_PICKER: ColorPicker = 'crayon'
 const DEFAULT_SELECTED_CRAYON: SelectedCrayon = 'full'
 const DEFAULT_BOUNDARY: Boundary = 'on'
 const DEFAULT_WIDTH_CONTROLS: WidthControls = 'off'
+const DEFAULT_CONTROL_STYLE: ControlStyle = 'icon'
 const DEFAULT_STROKE_WIDTH = 5
 const DEFAULT_ERASER_SCALE = 1
+const DEFAULT_DRAW_CURSOR = 'crosshair'
+const DEFAULT_ERASE_CURSOR = 'cell'
 const TAG_NAME = 'magic-crayon'
 const COLORS = [
   '#000000',
@@ -55,6 +66,9 @@ const COLORS = [
 
 const template = parseTemplateNode(templateHtml)
 const crayonIcon = parseCrayonIcon(pencilSvg)
+const eraserIcon = parseAssetIcon(eraserSvg, 'eraser.svg')
+const trashIcon = parseActionIcon(trashSvg, 'trash.svg')
+const undoIcon = parseActionIcon(undoSvg, 'undo.svg')
 
 class MagicCrayon extends HTMLElement {
   static observedAttributes = [
@@ -62,6 +76,9 @@ class MagicCrayon extends HTMLElement {
     'color-picker',
     'selected-crayon',
     'boundary',
+    'control-style',
+    'draw-cursor',
+    'erase-cursor',
     'width-controls',
     'stroke-width',
     'eraser-scale',
@@ -78,7 +95,6 @@ class MagicCrayon extends HTMLElement {
   protected readonly redoButton: HTMLButtonElement
   protected readonly saveButton: HTMLButtonElement
   protected readonly clearButton: HTMLButtonElement
-  protected readonly pencilButton: HTMLButtonElement
   protected readonly eraserButton: HTMLButtonElement
   protected readonly strokeWidthInput: HTMLInputElement
   protected readonly eraserScaleInput: HTMLInputElement
@@ -95,6 +111,9 @@ class MagicCrayon extends HTMLElement {
   protected colorPickerValue: ColorPicker = DEFAULT_COLOR_PICKER
   protected selectedCrayonValue: SelectedCrayon = DEFAULT_SELECTED_CRAYON
   protected boundaryValue: Boundary = DEFAULT_BOUNDARY
+  protected controlStyleValue: ControlStyle = DEFAULT_CONTROL_STYLE
+  protected drawCursorValue: CursorStyle = DEFAULT_DRAW_CURSOR
+  protected eraseCursorValue: CursorStyle = DEFAULT_ERASE_CURSOR
   protected widthControlsValue: WidthControls = DEFAULT_WIDTH_CONTROLS
   protected strokeWidthValue: number = DEFAULT_STROKE_WIDTH
   protected eraserScaleValue: number = DEFAULT_ERASER_SCALE
@@ -124,7 +143,6 @@ class MagicCrayon extends HTMLElement {
     this.redoButton = this.queryNode('[data-action="redo"]')
     this.saveButton = this.queryNode('[data-action="save"]')
     this.clearButton = this.queryNode('[data-action="clear"]')
-    this.pencilButton = this.queryNode('[data-tool="pencil"]')
     this.eraserButton = this.queryNode('[data-tool="eraser"]')
     this.strokeWidthInput = this.queryNode('[data-width-input="stroke"]')
     this.eraserScaleInput = this.queryNode('[data-width-input="eraser"]')
@@ -188,6 +206,51 @@ class MagicCrayon extends HTMLElement {
 
     if (this.getAttribute('boundary') !== next) {
       this.setAttribute('boundary', next)
+    }
+  }
+
+  get controlStyle(): ControlStyle {
+    return this.controlStyleValue
+  }
+
+  set controlStyle(value: ControlStyle) {
+    const next = assertControlStyle(value)
+
+    this.controlStyleValue = next
+    this.syncControlButtonContent()
+
+    if (this.getAttribute('control-style') !== next) {
+      this.setAttribute('control-style', next)
+    }
+  }
+
+  get drawCursor(): CursorStyle {
+    return this.drawCursorValue
+  }
+
+  set drawCursor(value: CursorStyle) {
+    const next = String(value)
+
+    this.drawCursorValue = next
+    this.syncCanvasCursor()
+
+    if (this.getAttribute('draw-cursor') !== next) {
+      this.setAttribute('draw-cursor', next)
+    }
+  }
+
+  get eraseCursor(): CursorStyle {
+    return this.eraseCursorValue
+  }
+
+  set eraseCursor(value: CursorStyle) {
+    const next = String(value)
+
+    this.eraseCursorValue = next
+    this.syncCanvasCursor()
+
+    if (this.getAttribute('erase-cursor') !== next) {
+      this.setAttribute('erase-cursor', next)
     }
   }
 
@@ -255,6 +318,10 @@ class MagicCrayon extends HTMLElement {
       assertBoundary(value)
     }
 
+    if (qualifiedName === 'control-style') {
+      assertControlStyle(value)
+    }
+
     if (qualifiedName === 'width-controls') {
       assertWidthControls(value)
     }
@@ -307,6 +374,24 @@ class MagicCrayon extends HTMLElement {
       this.setAttribute('boundary', DEFAULT_BOUNDARY)
     } else {
       this.boundaryValue = assertBoundary(this.getAttribute('boundary'))
+    }
+
+    if (!this.hasAttribute('control-style')) {
+      this.setAttribute('control-style', DEFAULT_CONTROL_STYLE)
+    } else {
+      this.controlStyleValue = assertControlStyle(this.getAttribute('control-style'))
+    }
+
+    if (!this.hasAttribute('draw-cursor')) {
+      this.setAttribute('draw-cursor', DEFAULT_DRAW_CURSOR)
+    } else {
+      this.drawCursorValue = String(this.getAttribute('draw-cursor'))
+    }
+
+    if (!this.hasAttribute('erase-cursor')) {
+      this.setAttribute('erase-cursor', DEFAULT_ERASE_CURSOR)
+    } else {
+      this.eraseCursorValue = String(this.getAttribute('erase-cursor'))
     }
 
     if (!this.hasAttribute('width-controls')) {
@@ -402,6 +487,28 @@ class MagicCrayon extends HTMLElement {
         this.boundaryValue = newValue
         this.wrap.dataset.boundary = this.boundaryValue
       }
+
+      return
+    }
+
+    if (name === 'control-style') {
+      this.controlStyleValue =
+        newValue === 'text' || newValue === 'icon' ? newValue : DEFAULT_CONTROL_STYLE
+      this.syncControlButtonContent()
+
+      return
+    }
+
+    if (name === 'draw-cursor') {
+      this.drawCursorValue = newValue ?? DEFAULT_DRAW_CURSOR
+      this.syncCanvasCursor()
+
+      return
+    }
+
+    if (name === 'erase-cursor') {
+      this.eraseCursorValue = newValue ?? DEFAULT_ERASE_CURSOR
+      this.syncCanvasCursor()
 
       return
     }
@@ -544,15 +651,6 @@ class MagicCrayon extends HTMLElement {
 
         this.syncToolState(Mode.ERASE)
       }
-
-      if (tool === 'pencil') {
-        if (this.activeMode === Mode.DRAW) {
-          this.setInactiveToolState()
-          return
-        }
-
-        this.syncToolState(Mode.DRAW)
-      }
     }
 
     const onColor = (event: Event) => {
@@ -646,7 +744,6 @@ class MagicCrayon extends HTMLElement {
     }
 
     this.menuButton.addEventListener('click', onMenu)
-    this.pencilButton.addEventListener('click', onTool)
     this.eraserButton.addEventListener('click', onTool)
     this.undoButton.addEventListener('click', onUndo)
     this.redoButton.addEventListener('click', onRedo)
@@ -658,7 +755,6 @@ class MagicCrayon extends HTMLElement {
     this.colors.addEventListener('click', onColor)
 
     this.teardown.push(() => this.menuButton.removeEventListener('click', onMenu))
-    this.teardown.push(() => this.pencilButton.removeEventListener('click', onTool))
     this.teardown.push(() => this.eraserButton.removeEventListener('click', onTool))
     this.teardown.push(() => this.undoButton.removeEventListener('click', onUndo))
     this.teardown.push(() => this.redoButton.removeEventListener('click', onRedo))
@@ -798,7 +894,6 @@ class MagicCrayon extends HTMLElement {
     const isDraw = mode === Mode.DRAW
 
     this.activeMode = mode
-    this.pencilButton.setAttribute('aria-pressed', isDraw ? 'true' : 'false')
     this.eraserButton.setAttribute('aria-pressed', isDraw ? 'false' : 'true')
 
     if (isDraw) {
@@ -824,14 +919,62 @@ class MagicCrayon extends HTMLElement {
 
   protected setInactiveToolState(): void {
     this.activeMode = null
-    this.pencilButton.setAttribute('aria-pressed', 'false')
     this.eraserButton.setAttribute('aria-pressed', 'false')
     this.syncCanvasCursor()
     this.syncColorSelectionState()
   }
 
   protected syncCanvasCursor(): void {
-    this.canvas.style.cursor = this.activeMode ? 'crosshair' : 'default'
+    if (this.activeMode === Mode.DRAW) {
+      this.canvas.style.cursor = this.drawCursorValue
+      return
+    }
+
+    if (this.activeMode === Mode.ERASE) {
+      this.canvas.style.cursor = this.eraseCursorValue
+      return
+    }
+
+    this.canvas.style.cursor = 'default'
+  }
+
+  protected setButtonLabel(
+    button: HTMLButtonElement,
+    label: string,
+    title: string,
+    icon: SVGElement | null,
+  ): void {
+    button.textContent = ''
+    button.setAttribute('title', title)
+
+    if (this.controlStyleValue === 'icon' && icon) {
+      const svg = toSvgElement(icon.cloneNode(true))
+
+      svg.setAttribute('aria-hidden', 'true')
+      svg.setAttribute('focusable', 'false')
+      button.append(svg)
+      button.setAttribute('aria-label', label)
+      button.classList.add('is-icon')
+      return
+    }
+
+    button.textContent = label
+    button.removeAttribute('aria-label')
+    button.classList.remove('is-icon')
+  }
+
+  protected syncControlButtonContent(): void {
+    this.setButtonLabel(this.eraserButton, 'Eraser', 'eraser', eraserIcon)
+    this.setButtonLabel(this.clearButton, 'Clear', 'trash', trashIcon)
+    this.setButtonLabel(this.undoButton, 'Undo', 'undo', undoIcon)
+    this.setButtonLabel(this.redoButton, 'Redo', 'redo', undoIcon)
+
+    if (this.controlStyleValue === 'icon') {
+      this.redoButton.classList.add('is-mirrored')
+      return
+    }
+
+    this.redoButton.classList.remove('is-mirrored')
   }
 
   protected setMenuOpen(open: boolean): void {
@@ -863,6 +1006,7 @@ class MagicCrayon extends HTMLElement {
     this.wrap.dataset.boundary = this.boundaryValue
     this.wrap.dataset.widthControls = this.widthControlsValue
     this.colors.dataset.selectedCrayon = this.selectedCrayonValue
+    this.syncControlButtonContent()
     this.syncWidthControlValues()
   }
 
@@ -900,6 +1044,8 @@ export type {
   AvailabilityDetail,
   Boundary,
   ColorPicker,
+  ControlStyle,
+  CursorStyle,
   DrawingData,
   SaveDetail,
   SelectedCrayon,

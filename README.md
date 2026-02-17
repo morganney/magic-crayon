@@ -28,10 +28,16 @@ It ships as a native custom element: `<magic-crayon>`.
 - Optional built-in width slider controls:
   - `width-controls` (`off` default)
   - replaceable via `slot="width-controls"`
+- Optional action control presentation:
+  - `control-style`: `icon` (default) or `text`
+- Configurable canvas cursors by mode:
+  - `draw-cursor` (default: `crosshair`)
+  - `erase-cursor` (default: `cell`)
 - Export drawing data as:
   - `blob`
   - `dataurl`
 - Public API + custom events for host integration
+- CSS custom properties for theming and typography overrides
 
 ## Installation
 
@@ -72,6 +78,9 @@ if (!customElements.get(TAG_NAME)) {
   color-picker="crayon"
   selected-crayon="full"
   boundary="on"
+  control-style="icon"
+  draw-cursor="crosshair"
+  erase-cursor="cell"
   width-controls="off"
   stroke-width="5"
   eraser-scale="1"
@@ -95,6 +104,9 @@ if (!customElements.get(TAG_NAME)) {
 - `color-picker`: `crayon | swatch` (default: `crayon`)
 - `selected-crayon`: `full | clipped` (default: `full`)
 - `boundary`: `on | off` (default: `on`)
+- `control-style`: `text | icon` (default: `icon`)
+- `draw-cursor`: any valid CSS cursor string (default: `crosshair`)
+- `erase-cursor`: any valid CSS cursor string (default: `cell`)
 - `width-controls`: `on | off` (default: `off`)
 - `stroke-width`: positive number (default: `5`)
 - `eraser-scale`: positive number (default: `1`)
@@ -105,6 +117,9 @@ if (!customElements.get(TAG_NAME)) {
 - `colorPicker: 'crayon' | 'swatch'`
 - `selectedCrayon: 'full' | 'clipped'`
 - `boundary: 'on' | 'off'`
+- `controlStyle: 'text' | 'icon'`
+- `drawCursor: string`
+- `eraseCursor: string`
 - `widthControls: 'on' | 'off'`
 - `strokeWidth: number` (must be positive)
 - `eraserScale: number` (must be positive)
@@ -132,6 +147,18 @@ if (!customElements.get(TAG_NAME)) {
 - `width-controls`
   - Replaces only the width-controls sub-UI while keeping default tools/actions.
   - Built-in fallback UI is rendered when no assigned content is provided.
+
+## Styling and Theming
+
+`magic-crayon` supports host-level CSS custom property overrides without replacing its
+Shadow DOM structure.
+
+Use the component CSS variables (`--magic-crayon-*`) as the stable theming API.
+
+- For a complete token reference, design-system mapping, theme recipes, and
+  integration recommendations, see [docs/theming.md](docs/theming.md).
+- For structural customization of only the width controls UI, use
+  `slot="width-controls"`.
 
 All events bubble and are composed.
 

@@ -8,6 +8,9 @@ type StoryArgs = {
   colorPicker: 'crayon' | 'swatch'
   selectedCrayon: 'full' | 'clipped'
   boundary: 'on' | 'off'
+  controlStyle: 'text' | 'icon'
+  drawCursor: string
+  eraseCursor: string
   widthControls: 'on' | 'off'
   strokeWidth: number
   eraserScale: number
@@ -31,6 +34,9 @@ const meta: Meta<StoryArgs> = {
     colorPicker: 'crayon',
     selectedCrayon: 'full',
     boundary: 'on',
+    controlStyle: 'icon',
+    drawCursor: 'crosshair',
+    eraseCursor: 'cell',
     widthControls: 'off',
     strokeWidth: 5,
     eraserScale: 1,
@@ -60,6 +66,22 @@ const meta: Meta<StoryArgs> = {
       description: 'Toggle the default outer visual boundary cue.',
       control: { type: 'inline-radio' },
       options: ['on', 'off'],
+    },
+    controlStyle: {
+      name: 'control-style',
+      description: 'Switch between text labels and icon controls for clear/undo/redo.',
+      control: { type: 'inline-radio' },
+      options: ['text', 'icon'],
+    },
+    drawCursor: {
+      name: 'draw-cursor',
+      description: 'CSS cursor value used while in draw mode.',
+      control: { type: 'text' },
+    },
+    eraseCursor: {
+      name: 'erase-cursor',
+      description: 'CSS cursor value used while in erase mode.',
+      control: { type: 'text' },
     },
     widthControls: {
       name: 'width-controls',
@@ -100,6 +122,9 @@ const meta: Meta<StoryArgs> = {
     colorPicker,
     selectedCrayon,
     boundary,
+    controlStyle,
+    drawCursor,
+    eraseCursor,
     widthControls,
     strokeWidth,
     eraserScale,
@@ -120,6 +145,9 @@ const meta: Meta<StoryArgs> = {
     element.setAttribute('color-picker', colorPicker)
     element.setAttribute('selected-crayon', selectedCrayon)
     element.setAttribute('boundary', boundary)
+    element.setAttribute('control-style', controlStyle)
+    element.setAttribute('draw-cursor', drawCursor)
+    element.setAttribute('erase-cursor', eraseCursor)
     element.setAttribute('width-controls', widthControls)
     element.setAttribute('stroke-width', String(strokeWidth))
     element.setAttribute('eraser-scale', String(eraserScale))
