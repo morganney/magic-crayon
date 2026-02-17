@@ -25,6 +25,8 @@
   "scripts": {
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
+    "svg:optimize": "svgo --config=svgo.config.js --multipass --folder assets --recursive",
+    "svg:check": "node ./scripts/check-svgo.js",
     "prettier": "prettier --write .",
     "dev": "vite -c vite.config.ts",
     "build": "vite build -c vite.config.ts && npm run build:types",
@@ -67,6 +69,7 @@
     "lint-staged": "^16.2.1",
     "prettier": "^3.8.1",
     "storybook": "^10.2.8",
+    "svgo": "^4.0.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.1",
     "vite": "^7.3.1",

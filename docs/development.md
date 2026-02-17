@@ -79,3 +79,15 @@ Lint:
 ```bash
 npm run lint
 ```
+
+SVG optimization:
+
+```bash
+npm run svg:optimize
+```
+
+SVG optimization check (fails if SVGs need optimization):
+
+```bash
+npm run svg:check
+```
