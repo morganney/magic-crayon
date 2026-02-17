@@ -271,6 +271,25 @@ button.is-icon.is-mirrored > svg {
   transform: scaleX(-1);
 }
 
+.tool.is-icon[data-tool='eraser'] {
+  background-color: transparent;
+  border-color: transparent;
+  border-width: 0;
+  border-radius: 0;
+  width: auto;
+  height: auto;
+}
+
+.tool.is-icon[data-tool='eraser'][aria-pressed='true'] {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.tool.is-icon[data-tool='eraser'] > svg {
+  width: 36px;
+  height: 36px;
+}
+
 @container magic-crayon (max-width: 768px) {
   .wrap {
     grid-template-rows: auto auto;

@@ -35,6 +35,9 @@ const parseSvgRoot = (svg: string, sourceName: string): SVGElement => {
 export const parseCrayonIcon = (svg: string): SVGElement =>
   parseSvgRoot(svg, 'pencil.svg')
 
+export const parseAssetIcon = (svg: string, sourceName: string): SVGElement =>
+  parseSvgRoot(svg, sourceName)
+
 export const parseActionIcon = (svg: string, sourceName: string): SVGElement =>
   (() => {
     const icon = parseSvgRoot(svg, sourceName)

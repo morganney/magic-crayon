@@ -108,6 +108,8 @@ describe('magic-crayon', () => {
 
   it('defaults control style to icon and allows switching to text mode', () => {
     const node = createMagicCrayon()
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
     const clear = node.shadowRoot?.querySelector<HTMLButtonElement>(
       '[data-action="clear"]',
     )
@@ -116,6 +118,10 @@ describe('magic-crayon', () => {
 
     expect(node.controlStyle).toBe('icon')
     expect(node.getAttribute('control-style')).toBe('icon')
+    expect(eraser?.textContent?.trim()).toBe('')
+    expect(eraser?.querySelector('svg')).toBeTruthy()
+    expect(eraser?.getAttribute('aria-label')).toBe('Eraser')
+    expect(eraser?.getAttribute('title')).toBe('eraser')
     expect(clear?.textContent?.trim()).toBe('')
     expect(clear?.querySelector('svg')).toBeTruthy()
     expect(clear?.getAttribute('aria-label')).toBe('Clear')
@@ -126,6 +132,10 @@ describe('magic-crayon', () => {
     node.controlStyle = 'text'
 
     expect(node.getAttribute('control-style')).toBe('text')
+    expect(eraser?.textContent).toBe('Eraser')
+    expect(eraser?.querySelector('svg')).toBeNull()
+    expect(eraser?.getAttribute('aria-label')).toBeNull()
+    expect(eraser?.getAttribute('title')).toBe('eraser')
     expect(clear?.textContent).toBe('Clear')
     expect(clear?.querySelector('svg')).toBeNull()
     expect(clear?.getAttribute('aria-label')).toBeNull()
