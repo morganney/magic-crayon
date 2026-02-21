@@ -361,6 +361,77 @@ describe('magic-crayon', () => {
     expect(colorInput.value).toBe('#60378d')
   })
 
+  it('keeps recent swatches fixed on reuse and evicts least-recently-used on overflow', () => {
+    const node = createMagicCrayon()
+
+    node.colorPicker = 'input'
+
+    const selected = ['#111111', '#222222', '#333333', '#444444', '#555555', '#666666']
+
+    for (const color of selected) {
+      const colorInput =
+        node.shadowRoot?.querySelector<HTMLInputElement>('.colors .color-input')
+
+      if (!colorInput) {
+        throw new Error('Color input not found')
+      }
+
+      colorInput.value = color
+      colorInput.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+
+    const recent = Array.from(
+      node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.colors .swatch') ?? [],
+    ).map(button => button.dataset.color)
+
+    expect(recent).toEqual(['#666666', '#222222', '#333333', '#444444', '#555555'])
+
+    const colorsWrap = node.shadowRoot?.querySelector('.colors')
+    const firstChild = colorsWrap?.firstElementChild
+
+    expect(firstChild).toBeInstanceOf(HTMLInputElement)
+    expect((firstChild as HTMLInputElement).type).toBe('color')
+
+    const swatches =
+      node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.colors .swatch') ?? []
+
+    swatches[2]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    const recentAfterClick = Array.from(
+      node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.colors .swatch') ?? [],
+    ).map(button => button.dataset.color)
+
+    expect(recentAfterClick).toEqual([
+      '#666666',
+      '#222222',
+      '#333333',
+      '#444444',
+      '#555555',
+    ])
+
+    const colorInput =
+      node.shadowRoot?.querySelector<HTMLInputElement>('.colors .color-input')
+
+    if (!colorInput) {
+      throw new Error('Color input not found')
+    }
+
+    colorInput.value = '#777777'
+    colorInput.dispatchEvent(new Event('input', { bubbles: true }))
+
+    const recentAfterOverflow = Array.from(
+      node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.colors .swatch') ?? [],
+    ).map(button => button.dataset.color)
+
+    expect(recentAfterOverflow).toEqual([
+      '#666666',
+      '#777777',
+      '#333333',
+      '#444444',
+      '#555555',
+    ])
+  })
+
   it('dispatches save event with payload detail', async () => {
     const node = createMagicCrayon()
     const eventPromise = new Promise<CustomEvent<SaveDetail>>(resolve => {

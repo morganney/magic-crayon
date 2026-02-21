@@ -52,6 +52,7 @@ const DEFAULT_STROKE_WIDTH = 5
 const DEFAULT_ERASER_SCALE = 1
 const DEFAULT_DRAW_CURSOR = 'crosshair'
 const DEFAULT_ERASE_CURSOR = 'cell'
+const MAX_INPUT_RECENT_COLORS = 5
 const TAG_NAME = 'magic-crayon'
 const COLORS = [
   '#000000',
@@ -108,6 +109,9 @@ class MagicCrayon extends HTMLElement {
   protected isDrawing = false
   protected activeMode: Mode | null = null
   protected selectedColor: string | null = null
+  protected inputRecentColors: string[] = []
+  protected inputRecentColorUsage = new Map<string, number>()
+  protected inputRecentColorUsageTick = 0
   protected drawingValue: DrawingData | null = null
   protected serializationValue: Serialization = DEFAULT_SERIALIZATION
   protected colorPickerValue: ColorPicker = DEFAULT_COLOR_PICKER
@@ -594,14 +598,31 @@ class MagicCrayon extends HTMLElement {
 
     if (this.colorPickerValue === 'input') {
       const input = document.createElement('input')
+      const recentButtons = this.inputRecentColors.map(color => {
+        const button = document.createElement('button')
+
+        button.type = 'button'
+        button.className = 'swatch'
+        button.setAttribute('data-color', color)
+        button.setAttribute('aria-label', `Color ${color}`)
+        button.setAttribute(
+          'aria-pressed',
+          this.activeMode === Mode.DRAW && this.selectedColor === color
+            ? 'true'
+            : 'false',
+        )
+        button.style.backgroundColor = color
+
+        return button
+      })
 
       input.type = 'color'
       input.className = 'color-input'
       input.setAttribute('data-color-input', 'true')
       input.setAttribute('aria-label', 'Pick color')
-      input.value = this.selectedColor ?? COLORS[0]
+      input.value = this.selectedColor ?? this.inputRecentColors.at(-1) ?? COLORS[0]
 
-      this.colors.replaceChildren(input)
+      this.colors.replaceChildren(input, ...recentButtons)
       return
     }
 
@@ -643,6 +664,43 @@ class MagicCrayon extends HTMLElement {
 
       item.setAttribute('aria-pressed', isActiveDrawSelection ? 'true' : 'false')
     }
+  }
+
+  protected pushInputRecentColor(color: string): boolean {
+    this.inputRecentColorUsageTick += 1
+    this.inputRecentColorUsage.set(color, this.inputRecentColorUsageTick)
+
+    if (this.inputRecentColors.includes(color)) {
+      return false
+    }
+
+    if (this.inputRecentColors.length < MAX_INPUT_RECENT_COLORS) {
+      this.inputRecentColors = [...this.inputRecentColors, color]
+      return true
+    }
+
+    const recentWithUsage = this.inputRecentColors.map(item => ({
+      color: item,
+      usage: this.inputRecentColorUsage.get(item) ?? 0,
+    }))
+    const leastRecent = recentWithUsage.reduce((prev, curr) =>
+      curr.usage < prev.usage ? curr : prev,
+    )
+    const replaceIndex = this.inputRecentColors.findIndex(
+      item => item === leastRecent.color,
+    )
+
+    if (replaceIndex < 0) {
+      return false
+    }
+
+    const next = [...this.inputRecentColors]
+
+    next[replaceIndex] = color
+    this.inputRecentColors = next
+    this.inputRecentColorUsage.delete(leastRecent.color)
+
+    return true
   }
 
   protected bindUIEvents(): void {
@@ -693,6 +751,10 @@ class MagicCrayon extends HTMLElement {
 
       this.selectedColor = color
 
+      if (this.colorPickerValue === 'input') {
+        this.renderColorButtons()
+      }
+
       this.syncToolState(Mode.DRAW)
     }
 
@@ -708,6 +770,11 @@ class MagicCrayon extends HTMLElement {
       }
 
       this.selectedColor = target.value
+
+      if (this.pushInputRecentColor(target.value)) {
+        this.renderColorButtons()
+      }
+
       this.syncToolState(Mode.DRAW)
     }
 

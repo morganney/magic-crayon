@@ -258,6 +258,20 @@ button:disabled {
   cursor: pointer;
 }
 
+.colors[data-picker='input'] .swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--magic-crayon-swatch-border);
+  padding: 0;
+  background: transparent;
+}
+
+.colors[data-picker='input'] .swatch[aria-pressed='true'] {
+  border-color: var(--magic-crayon-swatch-selected);
+  box-shadow: inset 0 0 0 2px var(--magic-crayon-swatch-selected);
+}
+
 .clear {
   color: var(--magic-crayon-clear-color);
   border-color: var(--magic-crayon-clear-color);
