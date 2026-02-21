@@ -53,7 +53,7 @@ const meta: Meta<StoryArgs> = {
       name: 'color-picker',
       description: 'Choose the color selection experience.',
       control: { type: 'inline-radio' },
-      options: ['crayon', 'swatch'],
+      options: ['crayon', 'swatch', 'input'],
     },
     selectedCrayon: {
       name: 'selected-crayon',

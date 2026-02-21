@@ -1,7 +1,7 @@
 import type { Context2DMetaData } from './context2d.js'
 
 export type Serialization = 'blob' | 'dataurl'
-export type ColorPicker = 'crayon' | 'swatch'
+export type ColorPicker = 'crayon' | 'swatch' | 'input'
 export type SelectedCrayon = 'full' | 'clipped'
 export type Boundary = 'on' | 'off'
 export type WidthControls = 'on' | 'off'

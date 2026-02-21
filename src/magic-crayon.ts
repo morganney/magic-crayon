@@ -467,7 +467,7 @@ class MagicCrayon extends HTMLElement {
     }
 
     if (name === 'color-picker') {
-      if (newValue === 'crayon' || newValue === 'swatch') {
+      if (newValue === 'crayon' || newValue === 'swatch' || newValue === 'input') {
         this.colorPickerValue = newValue
         this.renderColorButtons()
       }
@@ -592,6 +592,19 @@ class MagicCrayon extends HTMLElement {
     this.colors.dataset.picker = this.colorPickerValue
     this.colors.dataset.selectedCrayon = this.selectedCrayonValue
 
+    if (this.colorPickerValue === 'input') {
+      const input = document.createElement('input')
+
+      input.type = 'color'
+      input.className = 'color-input'
+      input.setAttribute('data-color-input', 'true')
+      input.setAttribute('aria-label', 'Pick color')
+      input.value = this.selectedColor ?? COLORS[0]
+
+      this.colors.replaceChildren(input)
+      return
+    }
+
     this.colors.replaceChildren(
       ...COLORS.map(color => {
         const button = document.createElement('button')
@@ -683,6 +696,21 @@ class MagicCrayon extends HTMLElement {
       this.syncToolState(Mode.DRAW)
     }
 
+    const onColorInput = (event: Event) => {
+      if (!isHTMLInputElement(event.target)) {
+        return
+      }
+
+      const target = event.target
+
+      if (target.dataset.colorInput !== 'true' || !this.context2d) {
+        return
+      }
+
+      this.selectedColor = target.value
+      this.syncToolState(Mode.DRAW)
+    }
+
     const onUndo = () => {
       const ctx = this.requireContext2D()
 
@@ -755,6 +783,7 @@ class MagicCrayon extends HTMLElement {
     this.eraserScaleInput.addEventListener('input', onWidthInput)
 
     this.colors.addEventListener('click', onColor)
+    this.colors.addEventListener('input', onColorInput)
 
     this.teardown.push(() => this.menuButton.removeEventListener('click', onMenu))
     this.teardown.push(() => this.eraserButton.removeEventListener('click', onTool))
@@ -769,6 +798,7 @@ class MagicCrayon extends HTMLElement {
       this.eraserScaleInput.removeEventListener('input', onWidthInput),
     )
     this.teardown.push(() => this.colors.removeEventListener('click', onColor))
+    this.teardown.push(() => this.colors.removeEventListener('input', onColorInput))
   }
 
   protected bindCanvasEvents(): void {
