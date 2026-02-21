@@ -74,11 +74,11 @@ export const assertSerialization = (value: string | null): Serialization => {
 }
 
 export const assertColorPicker = (value: string | null): ColorPicker => {
-  if (value === 'crayon' || value === 'swatch') {
+  if (value === 'crayon' || value === 'swatch' || value === 'input') {
     return value
   }
 
-  throw new TypeError('color-picker must be either "crayon" or "swatch".')
+  throw new TypeError('color-picker must be either "crayon", "swatch", or "input".')
 }
 
 export const assertSelectedCrayon = (value: string | null): SelectedCrayon => {

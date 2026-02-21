@@ -114,7 +114,7 @@ if (!customElements.get(TAG_NAME)) {
 ## Properties
 
 - `serialization: 'blob' | 'dataurl'`
-- `colorPicker: 'crayon' | 'swatch'`
+- `colorPicker: 'crayon' | 'swatch' | 'input'`
 - `selectedCrayon: 'full' | 'clipped'`
 - `boundary: 'on' | 'off'`
 - `controlStyle: 'text' | 'icon'`

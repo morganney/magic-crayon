@@ -312,10 +312,13 @@ describe('magic-crayon', () => {
     expect(slot?.assignedElements()[0]?.textContent).toContain('Custom width controls')
   })
 
-  it('defaults to crayon picker and allows switching to swatch', () => {
+  it('defaults to crayon picker and allows switching to swatch and input', () => {
     const node = createMagicCrayon()
     const colors = node.shadowRoot?.querySelector('.colors')
     const crayonIcon = node.shadowRoot?.querySelector('.swatch svg')
+    const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
 
     expect(node.colorPicker).toBe('crayon')
     expect(node.getAttribute('color-picker')).toBe('crayon')
@@ -331,6 +334,102 @@ describe('magic-crayon', () => {
     expect(colors?.getAttribute('data-picker')).toBe('swatch')
     expect(swatchIcon).toBeFalsy()
     expect(firstSwatch?.style.backgroundColor).toBeTruthy()
+
+    node.colorPicker = 'input'
+
+    const colorInput =
+      node.shadowRoot?.querySelector<HTMLInputElement>('.colors .color-input')
+
+    expect(node.getAttribute('color-picker')).toBe('input')
+    expect(colors?.getAttribute('data-picker')).toBe('input')
+    expect(colorInput?.type).toBe('color')
+    expect(colorInput?.value).toBe('#000000')
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
+
+    colorInput?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
+
+    if (!colorInput) {
+      throw new Error('Color input not found')
+    }
+
+    colorInput.value = '#60378d'
+    colorInput.dispatchEvent(new Event('input', { bubbles: true }))
+
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
+    expect(canvas?.style.cursor).toBe('crosshair')
+    expect(colorInput.value).toBe('#60378d')
+  })
+
+  it('keeps recent swatches fixed on reuse and evicts least-recently-used on overflow', () => {
+    const node = createMagicCrayon()
+
+    node.colorPicker = 'input'
+
+    const selected = ['#111111', '#222222', '#333333', '#444444', '#555555', '#666666']
+
+    for (const color of selected) {
+      const colorInput =
+        node.shadowRoot?.querySelector<HTMLInputElement>('.colors .color-input')
+
+      if (!colorInput) {
+        throw new Error('Color input not found')
+      }
+
+      colorInput.value = color
+      colorInput.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+
+    const recent = Array.from(
+      node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.colors .swatch') ?? [],
+    ).map(button => button.dataset.color)
+
+    expect(recent).toEqual(['#666666', '#222222', '#333333', '#444444', '#555555'])
+
+    const colorsWrap = node.shadowRoot?.querySelector('.colors')
+    const firstChild = colorsWrap?.firstElementChild
+
+    expect(firstChild).toBeInstanceOf(HTMLInputElement)
+    expect((firstChild as HTMLInputElement).type).toBe('color')
+
+    const swatches =
+      node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.colors .swatch') ?? []
+
+    swatches[2]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    const recentAfterClick = Array.from(
+      node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.colors .swatch') ?? [],
+    ).map(button => button.dataset.color)
+
+    expect(recentAfterClick).toEqual([
+      '#666666',
+      '#222222',
+      '#333333',
+      '#444444',
+      '#555555',
+    ])
+
+    const colorInput =
+      node.shadowRoot?.querySelector<HTMLInputElement>('.colors .color-input')
+
+    if (!colorInput) {
+      throw new Error('Color input not found')
+    }
+
+    colorInput.value = '#777777'
+    colorInput.dispatchEvent(new Event('input', { bubbles: true }))
+
+    const recentAfterOverflow = Array.from(
+      node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.colors .swatch') ?? [],
+    ).map(button => button.dataset.color)
+
+    expect(recentAfterOverflow).toEqual([
+      '#666666',
+      '#777777',
+      '#333333',
+      '#444444',
+      '#555555',
+    ])
   })
 
   it('dispatches save event with payload detail', async () => {
@@ -618,6 +717,33 @@ describe('magic-crayon', () => {
     expect(() => {
       ;(node as unknown as { disconnectedCallback: () => void }).disconnectedCallback()
     }).not.toThrow()
+  })
+
+  it('switches eraser icon when pressed state changes in icon mode', () => {
+    const node = createMagicCrayon()
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
+
+    expect(eraser).toBeTruthy()
+
+    const initialIcon = eraser?.querySelector('svg')?.outerHTML
+
+    expect(initialIcon).toBeTruthy()
+
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    const activeIcon = eraser?.querySelector('svg')?.outerHTML
+
+    expect(eraser?.getAttribute('aria-pressed')).toBe('true')
+    expect(activeIcon).toBeTruthy()
+    expect(activeIcon).not.toBe(initialIcon)
+
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    const revertedIcon = eraser?.querySelector('svg')?.outerHTML
+
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
+    expect(revertedIcon).toBe(initialIcon)
   })
 
   it('returns early for non-standard ui handler event payloads', () => {

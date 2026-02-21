@@ -1,25 +1,37 @@
 import type { Meta, StoryObj } from '@storybook/web-components-vite'
 import { fn } from 'storybook/test'
 
-import './defined.js'
+import { MagicCrayon, TAG_NAME } from './magic-crayon.js'
+import type { SaveDetail, WidthChangeDetail } from './types.js'
 
-type StoryArgs = {
-  serialization: 'blob' | 'dataurl'
-  colorPicker: 'crayon' | 'swatch'
-  selectedCrayon: 'full' | 'clipped'
-  boundary: 'on' | 'off'
-  controlStyle: 'text' | 'icon'
-  drawCursor: string
-  eraseCursor: string
-  widthControls: 'on' | 'off'
-  strokeWidth: number
-  eraserScale: number
+type StoryArgs = MagicCrayon & {
   hostHeight: number
-  onSave: (detail: unknown) => void
-  onWidthChange: (detail: unknown) => void
+  onSave: (detail: SaveDetail) => void
+  onWidthChange: (detail: WidthChangeDetail) => void
 }
 
-const meta: Meta<StoryArgs> = {
+const serializationOptions = ['blob', 'dataurl'] as const satisfies readonly NonNullable<
+  StoryArgs['serialization']
+>[]
+const colorPickerOptions = [
+  'crayon',
+  'swatch',
+  'input',
+] as const satisfies readonly NonNullable<StoryArgs['colorPicker']>[]
+const selectedCrayonOptions = ['full', 'clipped'] as const satisfies readonly NonNullable<
+  StoryArgs['selectedCrayon']
+>[]
+const boundaryOptions = ['on', 'off'] as const satisfies readonly NonNullable<
+  StoryArgs['boundary']
+>[]
+const controlStyleOptions = ['text', 'icon'] as const satisfies readonly NonNullable<
+  StoryArgs['controlStyle']
+>[]
+const widthControlsOptions = ['on', 'off'] as const satisfies readonly NonNullable<
+  StoryArgs['widthControls']
+>[]
+
+const meta = {
   title: 'Magic Crayon/Element',
   parameters: {
     docs: {
@@ -47,31 +59,31 @@ const meta: Meta<StoryArgs> = {
   argTypes: {
     serialization: {
       control: { type: 'inline-radio' },
-      options: ['blob', 'dataurl'],
+      options: serializationOptions,
     },
     colorPicker: {
       name: 'color-picker',
       description: 'Choose the color selection experience.',
       control: { type: 'inline-radio' },
-      options: ['crayon', 'swatch'],
+      options: colorPickerOptions,
     },
     selectedCrayon: {
       name: 'selected-crayon',
       description: 'Control selected crayon visibility in crayon picker mode.',
       control: { type: 'inline-radio' },
-      options: ['full', 'clipped'],
+      options: selectedCrayonOptions,
     },
     boundary: {
       name: 'boundary',
       description: 'Toggle the default outer visual boundary cue.',
       control: { type: 'inline-radio' },
-      options: ['on', 'off'],
+      options: boundaryOptions,
     },
     controlStyle: {
       name: 'control-style',
       description: 'Switch between text labels and icon controls for clear/undo/redo.',
       control: { type: 'inline-radio' },
-      options: ['text', 'icon'],
+      options: controlStyleOptions,
     },
     drawCursor: {
       name: 'draw-cursor',
@@ -87,7 +99,7 @@ const meta: Meta<StoryArgs> = {
       name: 'width-controls',
       description: 'Toggle the built-in width sliders visibility.',
       control: { type: 'inline-radio' },
-      options: ['on', 'off'],
+      options: widthControlsOptions,
     },
     strokeWidth: {
       name: 'stroke-width',
@@ -165,7 +177,9 @@ const meta: Meta<StoryArgs> = {
 
     return host
   },
-}
+} satisfies Meta<StoryArgs>
+
+customElements.define(TAG_NAME, MagicCrayon)
 
 export default meta
 

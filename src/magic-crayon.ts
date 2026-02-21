@@ -2,6 +2,7 @@ import { Composites, Context2D, Mode } from './context2d.js'
 import type { CustomNumberEventListener } from './context2d.js'
 import pencilSvg from '../assets/pencil.svg?raw'
 import eraserSvg from '../assets/eraser.svg?raw'
+import eraserFilledSvg from '../assets/eraser-filled.svg?raw'
 import trashSvg from '../assets/trash.svg?raw'
 import undoSvg from '../assets/undo.svg?raw'
 import templateHtml from './template.html?raw'
@@ -51,6 +52,7 @@ const DEFAULT_STROKE_WIDTH = 5
 const DEFAULT_ERASER_SCALE = 1
 const DEFAULT_DRAW_CURSOR = 'crosshair'
 const DEFAULT_ERASE_CURSOR = 'cell'
+const MAX_INPUT_RECENT_COLORS = 5
 const TAG_NAME = 'magic-crayon'
 const COLORS = [
   '#000000',
@@ -67,6 +69,7 @@ const COLORS = [
 const template = parseTemplateNode(templateHtml)
 const crayonIcon = parseCrayonIcon(pencilSvg)
 const eraserIcon = parseAssetIcon(eraserSvg, 'eraser.svg')
+const eraserFilledIcon = parseAssetIcon(eraserFilledSvg, 'eraser-filled.svg')
 const trashIcon = parseActionIcon(trashSvg, 'trash.svg')
 const undoIcon = parseActionIcon(undoSvg, 'undo.svg')
 
@@ -106,6 +109,9 @@ class MagicCrayon extends HTMLElement {
   protected isDrawing = false
   protected activeMode: Mode | null = null
   protected selectedColor: string | null = null
+  protected inputRecentColors: string[] = []
+  protected inputRecentColorUsage = new Map<string, number>()
+  protected inputRecentColorUsageTick = 0
   protected drawingValue: DrawingData | null = null
   protected serializationValue: Serialization = DEFAULT_SERIALIZATION
   protected colorPickerValue: ColorPicker = DEFAULT_COLOR_PICKER
@@ -465,7 +471,7 @@ class MagicCrayon extends HTMLElement {
     }
 
     if (name === 'color-picker') {
-      if (newValue === 'crayon' || newValue === 'swatch') {
+      if (newValue === 'crayon' || newValue === 'swatch' || newValue === 'input') {
         this.colorPickerValue = newValue
         this.renderColorButtons()
       }
@@ -590,6 +596,36 @@ class MagicCrayon extends HTMLElement {
     this.colors.dataset.picker = this.colorPickerValue
     this.colors.dataset.selectedCrayon = this.selectedCrayonValue
 
+    if (this.colorPickerValue === 'input') {
+      const input = document.createElement('input')
+      const recentButtons = this.inputRecentColors.map(color => {
+        const button = document.createElement('button')
+
+        button.type = 'button'
+        button.className = 'swatch'
+        button.setAttribute('data-color', color)
+        button.setAttribute('aria-label', `Color ${color}`)
+        button.setAttribute(
+          'aria-pressed',
+          this.activeMode === Mode.DRAW && this.selectedColor === color
+            ? 'true'
+            : 'false',
+        )
+        button.style.backgroundColor = color
+
+        return button
+      })
+
+      input.type = 'color'
+      input.className = 'color-input'
+      input.setAttribute('data-color-input', 'true')
+      input.setAttribute('aria-label', 'Pick color')
+      input.value = this.selectedColor ?? this.inputRecentColors.at(-1) ?? COLORS[0]
+
+      this.colors.replaceChildren(input, ...recentButtons)
+      return
+    }
+
     this.colors.replaceChildren(
       ...COLORS.map(color => {
         const button = document.createElement('button')
@@ -628,6 +664,43 @@ class MagicCrayon extends HTMLElement {
 
       item.setAttribute('aria-pressed', isActiveDrawSelection ? 'true' : 'false')
     }
+  }
+
+  protected pushInputRecentColor(color: string): boolean {
+    this.inputRecentColorUsageTick += 1
+    this.inputRecentColorUsage.set(color, this.inputRecentColorUsageTick)
+
+    if (this.inputRecentColors.includes(color)) {
+      return false
+    }
+
+    if (this.inputRecentColors.length < MAX_INPUT_RECENT_COLORS) {
+      this.inputRecentColors = [...this.inputRecentColors, color]
+      return true
+    }
+
+    const recentWithUsage = this.inputRecentColors.map(item => ({
+      color: item,
+      usage: this.inputRecentColorUsage.get(item) ?? 0,
+    }))
+    const leastRecent = recentWithUsage.reduce((prev, curr) =>
+      curr.usage < prev.usage ? curr : prev,
+    )
+    const replaceIndex = this.inputRecentColors.findIndex(
+      item => item === leastRecent.color,
+    )
+
+    if (replaceIndex < 0) {
+      return false
+    }
+
+    const next = [...this.inputRecentColors]
+
+    next[replaceIndex] = color
+    this.inputRecentColors = next
+    this.inputRecentColorUsage.delete(leastRecent.color)
+
+    return true
   }
 
   protected bindUIEvents(): void {
@@ -677,6 +750,30 @@ class MagicCrayon extends HTMLElement {
       }
 
       this.selectedColor = color
+
+      if (this.colorPickerValue === 'input') {
+        this.renderColorButtons()
+      }
+
+      this.syncToolState(Mode.DRAW)
+    }
+
+    const onColorInput = (event: Event) => {
+      if (!isHTMLInputElement(event.target)) {
+        return
+      }
+
+      const target = event.target
+
+      if (target.dataset.colorInput !== 'true' || !this.context2d) {
+        return
+      }
+
+      this.selectedColor = target.value
+
+      if (this.pushInputRecentColor(target.value)) {
+        this.renderColorButtons()
+      }
 
       this.syncToolState(Mode.DRAW)
     }
@@ -753,6 +850,7 @@ class MagicCrayon extends HTMLElement {
     this.eraserScaleInput.addEventListener('input', onWidthInput)
 
     this.colors.addEventListener('click', onColor)
+    this.colors.addEventListener('input', onColorInput)
 
     this.teardown.push(() => this.menuButton.removeEventListener('click', onMenu))
     this.teardown.push(() => this.eraserButton.removeEventListener('click', onTool))
@@ -767,6 +865,7 @@ class MagicCrayon extends HTMLElement {
       this.eraserScaleInput.removeEventListener('input', onWidthInput),
     )
     this.teardown.push(() => this.colors.removeEventListener('click', onColor))
+    this.teardown.push(() => this.colors.removeEventListener('input', onColorInput))
   }
 
   protected bindCanvasEvents(): void {
@@ -895,6 +994,7 @@ class MagicCrayon extends HTMLElement {
 
     this.activeMode = mode
     this.eraserButton.setAttribute('aria-pressed', isDraw ? 'false' : 'true')
+    this.syncControlButtonContent()
 
     if (isDraw) {
       const active = this.selectedColor ?? COLORS[0]
@@ -920,6 +1020,7 @@ class MagicCrayon extends HTMLElement {
   protected setInactiveToolState(): void {
     this.activeMode = null
     this.eraserButton.setAttribute('aria-pressed', 'false')
+    this.syncControlButtonContent()
     this.syncCanvasCursor()
     this.syncColorSelectionState()
   }
@@ -964,7 +1065,14 @@ class MagicCrayon extends HTMLElement {
   }
 
   protected syncControlButtonContent(): void {
-    this.setButtonLabel(this.eraserButton, 'Eraser', 'eraser', eraserIcon)
+    const eraserIsPressed = this.eraserButton.getAttribute('aria-pressed') === 'true'
+
+    this.setButtonLabel(
+      this.eraserButton,
+      'Eraser',
+      'eraser',
+      eraserIsPressed ? eraserFilledIcon : eraserIcon,
+    )
     this.setButtonLabel(this.clearButton, 'Clear', 'trash', trashIcon)
     this.setButtonLabel(this.undoButton, 'Undo', 'undo', undoIcon)
     this.setButtonLabel(this.redoButton, 'Redo', 'redo', undoIcon)
