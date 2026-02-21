@@ -2,6 +2,7 @@ import { Composites, Context2D, Mode } from './context2d.js'
 import type { CustomNumberEventListener } from './context2d.js'
 import pencilSvg from '../assets/pencil.svg?raw'
 import eraserSvg from '../assets/eraser.svg?raw'
+import eraserFilledSvg from '../assets/eraser-filled.svg?raw'
 import trashSvg from '../assets/trash.svg?raw'
 import undoSvg from '../assets/undo.svg?raw'
 import templateHtml from './template.html?raw'
@@ -67,6 +68,7 @@ const COLORS = [
 const template = parseTemplateNode(templateHtml)
 const crayonIcon = parseCrayonIcon(pencilSvg)
 const eraserIcon = parseAssetIcon(eraserSvg, 'eraser.svg')
+const eraserFilledIcon = parseAssetIcon(eraserFilledSvg, 'eraser-filled.svg')
 const trashIcon = parseActionIcon(trashSvg, 'trash.svg')
 const undoIcon = parseActionIcon(undoSvg, 'undo.svg')
 
@@ -895,6 +897,7 @@ class MagicCrayon extends HTMLElement {
 
     this.activeMode = mode
     this.eraserButton.setAttribute('aria-pressed', isDraw ? 'false' : 'true')
+    this.syncControlButtonContent()
 
     if (isDraw) {
       const active = this.selectedColor ?? COLORS[0]
@@ -920,6 +923,7 @@ class MagicCrayon extends HTMLElement {
   protected setInactiveToolState(): void {
     this.activeMode = null
     this.eraserButton.setAttribute('aria-pressed', 'false')
+    this.syncControlButtonContent()
     this.syncCanvasCursor()
     this.syncColorSelectionState()
   }
@@ -964,7 +968,14 @@ class MagicCrayon extends HTMLElement {
   }
 
   protected syncControlButtonContent(): void {
-    this.setButtonLabel(this.eraserButton, 'Eraser', 'eraser', eraserIcon)
+    const eraserIsPressed = this.eraserButton.getAttribute('aria-pressed') === 'true'
+
+    this.setButtonLabel(
+      this.eraserButton,
+      'Eraser',
+      'eraser',
+      eraserIsPressed ? eraserFilledIcon : eraserIcon,
+    )
     this.setButtonLabel(this.clearButton, 'Clear', 'trash', trashIcon)
     this.setButtonLabel(this.undoButton, 'Undo', 'undo', undoIcon)
     this.setButtonLabel(this.redoButton, 'Redo', 'redo', undoIcon)

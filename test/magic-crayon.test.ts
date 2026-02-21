@@ -620,6 +620,33 @@ describe('magic-crayon', () => {
     }).not.toThrow()
   })
 
+  it('switches eraser icon when pressed state changes in icon mode', () => {
+    const node = createMagicCrayon()
+    const eraser =
+      node.shadowRoot?.querySelector<HTMLButtonElement>('[data-tool="eraser"]')
+
+    expect(eraser).toBeTruthy()
+
+    const initialIcon = eraser?.querySelector('svg')?.outerHTML
+
+    expect(initialIcon).toBeTruthy()
+
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    const activeIcon = eraser?.querySelector('svg')?.outerHTML
+
+    expect(eraser?.getAttribute('aria-pressed')).toBe('true')
+    expect(activeIcon).toBeTruthy()
+    expect(activeIcon).not.toBe(initialIcon)
+
+    eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    const revertedIcon = eraser?.querySelector('svg')?.outerHTML
+
+    expect(eraser?.getAttribute('aria-pressed')).toBe('false')
+    expect(revertedIcon).toBe(initialIcon)
+  })
+
   it('returns early for non-standard ui handler event payloads', () => {
     const node = document.createElement('magic-crayon') as MagicCrayon
     const eraser =
