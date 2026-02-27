@@ -116,6 +116,14 @@ describe('magic-crayon', () => {
     expect(node.getAttribute('canvas-background')).toBe('black')
     expect(wrap?.getAttribute('data-canvas-background')).toBe('black')
     expect(remappedSwatch?.dataset.color).toBe('#ffffff')
+
+    node.canvasBackground = 'white'
+
+    const restoredSwatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
+
+    expect(node.getAttribute('canvas-background')).toBe('white')
+    expect(wrap?.getAttribute('data-canvas-background')).toBe('white')
+    expect(restoredSwatch?.dataset.color).toBe('#000000')
   })
 
   it('defaults width controls to off and allows turning them on', () => {

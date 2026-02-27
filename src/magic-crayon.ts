@@ -733,6 +733,10 @@ class MagicCrayon extends HTMLElement {
       this.selectedColor = '#ffffff'
     }
 
+    if (this.selectedColor === '#ffffff' && value === 'white') {
+      this.selectedColor = '#000000'
+    }
+
     if (this.context2d) {
       this.context2d.canvasBackgroundColor = this.getCanvasBackgroundColor()
     }
