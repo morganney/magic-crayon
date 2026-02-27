@@ -280,8 +280,8 @@ describe('Context2D', () => {
     expect(getAlphaAt(100, 50)).toBe(0)
   })
 
-  it('refreshes snapshot after undo and redo', () => {
-    const { drawing } = setup()
+  it('refreshes snapshot lazily when needed after undo and redo', () => {
+    const { drawing, canvas } = setup()
     const setSnapshotSpy = vi.spyOn(
       drawing as unknown as { setSnapshot: () => void },
       'setSnapshot',
@@ -294,11 +294,48 @@ describe('Context2D', () => {
     const beforeUndoCalls = setSnapshotSpy.mock.calls.length
 
     drawing.applyUndo()
-
-    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls + 1)
-
     drawing.applyRedo()
 
-    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls + 2)
+    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls)
+
+    Object.defineProperty(canvas, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => new DOMRect(0, 0, 160, 90),
+    })
+
+    drawing.rescale()
+
+    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls + 1)
+  })
+
+  it('restores exact pixels when undoing an erase stroke', () => {
+    const { drawing, canvas } = setup()
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      throw new Error('2d context is required for test')
+    }
+
+    drawing.pencilMode = Mode.DRAW
+    drawing.compositing = Composites.DRAW
+    drawing.lineWidth = 24
+    drawing.startDrawing(new DOMPoint(20, 50))
+    drawing.draw(new DOMPoint(180, 50))
+    drawing.stopDrawing()
+
+    const beforeErase = context.getImageData(0, 0, canvas.width, canvas.height)
+
+    drawing.pencilMode = Mode.ERASE
+    drawing.compositing = Composites.ERASE
+    drawing.lineWidth = 34
+    drawing.startDrawing(new DOMPoint(80, 50))
+    drawing.draw(new DOMPoint(120, 50))
+    drawing.stopDrawing()
+
+    drawing.applyUndo()
+
+    const afterUndo = context.getImageData(0, 0, canvas.width, canvas.height)
+
+    expect(afterUndo.data).toStrictEqual(beforeErase.data)
   })
 })
