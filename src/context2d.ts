@@ -50,6 +50,7 @@ class Context2D {
   protected redo = new FixedStack<PolyLineRecord>(5)
   protected scaleFactor: number = Math.ceil(Math.max(2, devicePixelRatio))
   protected snapshot: ImageData = new ImageData(this.viewWidth, this.viewHeight)
+  protected snapshotDirty: boolean = false
   protected serialization: Serializations = Serializations.BLOB
 
   constructor(context: CanvasRenderingContext2D, options?: ContextState) {
@@ -199,6 +200,19 @@ class Context2D {
     const height = Math.max(canvas.height, this.snapshot.height)
 
     this.snapshot = this.raster.getImageData(0, 0, width - 1, height - 1)
+    this.snapshotDirty = false
+  }
+
+  protected markSnapshotDirty(): void {
+    this.snapshotDirty = true
+  }
+
+  protected syncSnapshotIfDirty(): void {
+    if (!this.snapshotDirty) {
+      return
+    }
+
+    this.setSnapshot()
   }
 
   protected scaleForRetina(ctx: CanvasRenderingContext2D, canvasRect: DOMRect): void {
@@ -334,7 +348,8 @@ class Context2D {
     if (undo.mode === Mode.ERASE && undo.snapshotBefore) {
       this.redo.push(undo)
       this.putSnapshot(undo.snapshotBefore)
-      this.setSnapshot()
+      this.snapshot = this.cloneImageData(undo.snapshotBefore)
+      this.snapshotDirty = false
 
       return
     }
@@ -352,7 +367,7 @@ class Context2D {
 
     undo.context.globalCompositeOperation = origCompositeOp
     this.restore()
-    this.setSnapshot()
+    this.markSnapshotDirty()
   }
 
   applyRedo(): void {
@@ -369,7 +384,7 @@ class Context2D {
 
     redo.context.globalCompositeOperation = origCompositeOp
     this.restore()
-    this.setSnapshot()
+    this.markSnapshotDirty()
   }
 
   registerListeners(
@@ -392,6 +407,8 @@ class Context2D {
     const rect = this.raster.canvas.getBoundingClientRect()
     const state = this.getState()
 
+    this.syncSnapshotIfDirty()
+
     this.viewWidth = rect.width
     this.viewHeight = rect.height
     this.scaleForRetina(this.raster, rect)
@@ -400,6 +417,10 @@ class Context2D {
   }
 
   startDrawing(pos: DOMPoint): void {
+    if (this.mode === Mode.ERASE) {
+      this.syncSnapshotIfDirty()
+    }
+
     this.isDrawing = true
     this.pushUndo(this.createOffscreenContext())
     this.redo.clear()
@@ -409,13 +430,13 @@ class Context2D {
 
   stopDrawing(): void {
     this.isDrawing = false
-    this.setSnapshot()
   }
 
   draw(pos: DOMPoint): void {
     if (this.isDrawing) {
       this.lineTo(pos.x, pos.y)
       this.stroke()
+      this.markSnapshotDirty()
     }
   }
 

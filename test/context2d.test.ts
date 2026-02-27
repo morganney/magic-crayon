@@ -280,8 +280,8 @@ describe('Context2D', () => {
     expect(getAlphaAt(100, 50)).toBe(0)
   })
 
-  it('refreshes snapshot after undo and redo', () => {
-    const { drawing } = setup()
+  it('refreshes snapshot lazily when needed after undo and redo', () => {
+    const { drawing, canvas } = setup()
     const setSnapshotSpy = vi.spyOn(
       drawing as unknown as { setSnapshot: () => void },
       'setSnapshot',
@@ -294,12 +294,18 @@ describe('Context2D', () => {
     const beforeUndoCalls = setSnapshotSpy.mock.calls.length
 
     drawing.applyUndo()
-
-    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls + 1)
-
     drawing.applyRedo()
 
-    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls + 2)
+    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls)
+
+    Object.defineProperty(canvas, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => new DOMRect(0, 0, 160, 90),
+    })
+
+    drawing.rescale()
+
+    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls + 1)
   })
 
   it('restores exact pixels when undoing an erase stroke', () => {
