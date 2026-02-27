@@ -38,6 +38,7 @@ type PolyLineRecord = {
   context: CanvasRenderingContext2D
   mode: Mode
   snapshotBefore: ImageData | null
+  snapshotAfter: ImageData | null
 }
 
 class Context2D {
@@ -52,6 +53,7 @@ class Context2D {
   protected snapshot: ImageData = new ImageData(this.viewWidth, this.viewHeight)
   protected snapshotDirty: boolean = false
   protected serialization: Serializations = Serializations.BLOB
+  protected activeStroke: PolyLineRecord | null = null
 
   constructor(context: CanvasRenderingContext2D, options?: ContextState) {
     this.raster = context
@@ -271,16 +273,19 @@ class Context2D {
     this.raster.putImageData(snapshot, 0, 0)
   }
 
-  protected pushUndo(context: CanvasRenderingContext2D): void {
+  protected pushUndo(context: CanvasRenderingContext2D): PolyLineRecord {
     const polyline: PolyLineRecord = {
       context,
       mode: this.mode,
       snapshotBefore:
         this.mode === Mode.ERASE ? this.cloneImageData(this.snapshot) : null,
+      snapshotAfter: null,
     }
 
     context.globalCompositeOperation = Composites.DRAW
     this.undo.push(polyline)
+
+    return polyline
   }
 
   protected setDataUrl(dataUrl: string): Promise<void> {
@@ -372,6 +377,16 @@ class Context2D {
 
   applyRedo(): void {
     const redo = this.redo.pop()
+
+    if (redo.mode === Mode.ERASE && redo.snapshotAfter) {
+      this.undo.push(redo)
+      this.putSnapshot(redo.snapshotAfter)
+      this.snapshot = this.cloneImageData(redo.snapshotAfter)
+      this.snapshotDirty = false
+
+      return
+    }
+
     const origCompositeOp = redo.context.globalCompositeOperation
 
     this.undo.push(redo)
@@ -422,7 +437,7 @@ class Context2D {
     }
 
     this.isDrawing = true
-    this.pushUndo(this.createOffscreenContext())
+    this.activeStroke = this.pushUndo(this.createOffscreenContext())
     this.redo.clear()
     this.beginPath()
     this.moveTo(pos.x, pos.y)
@@ -430,6 +445,13 @@ class Context2D {
 
   stopDrawing(): void {
     this.isDrawing = false
+
+    if (this.activeStroke?.mode === Mode.ERASE) {
+      this.syncSnapshotIfDirty()
+      this.activeStroke.snapshotAfter = this.cloneImageData(this.snapshot)
+    }
+
+    this.activeStroke = null
   }
 
   draw(pos: DOMPoint): void {

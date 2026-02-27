@@ -332,10 +332,18 @@ describe('Context2D', () => {
     drawing.draw(new DOMPoint(120, 50))
     drawing.stopDrawing()
 
+    const afterErase = context.getImageData(0, 0, canvas.width, canvas.height)
+
     drawing.applyUndo()
 
     const afterUndo = context.getImageData(0, 0, canvas.width, canvas.height)
 
     expect(afterUndo.data).toStrictEqual(beforeErase.data)
+
+    drawing.applyRedo()
+
+    const afterRedo = context.getImageData(0, 0, canvas.width, canvas.height)
+
+    expect(afterRedo.data).toStrictEqual(afterErase.data)
   })
 })
