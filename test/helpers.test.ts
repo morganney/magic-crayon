@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  assertCanvasBackground,
   assertControlStyle,
   parseActionIcon,
   parseCrayonIcon,
@@ -30,6 +31,12 @@ describe('helpers', () => {
   it('throws when control-style is invalid', () => {
     expect(() => assertControlStyle('other')).toThrow(
       'control-style must be either "text" or "icon".',
+    )
+  })
+
+  it('throws when canvas-background is invalid', () => {
+    expect(() => assertCanvasBackground('other')).toThrow(
+      'canvas-background must be either "white" or "black".',
     )
   })
 

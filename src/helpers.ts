@@ -1,6 +1,7 @@
 import { Serializations } from './context2d.js'
 import type {
   Boundary,
+  CanvasBackground,
   ColorPicker,
   ControlStyle,
   SelectedCrayon,
@@ -111,6 +112,14 @@ export const assertControlStyle = (value: string | null): ControlStyle => {
   }
 
   throw new TypeError('control-style must be either "text" or "icon".')
+}
+
+export const assertCanvasBackground = (value: string | null): CanvasBackground => {
+  if (value === 'white' || value === 'black') {
+    return value
+  }
+
+  throw new TypeError('canvas-background must be either "white" or "black".')
 }
 
 const assertPositiveNumber = (value: number, name: string): number => {

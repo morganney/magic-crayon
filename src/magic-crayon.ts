@@ -9,6 +9,7 @@ import templateHtml from './template.html?raw'
 import stylesCss from './styles.css?raw'
 import {
   assertBoundary,
+  assertCanvasBackground,
   assertColorPicker,
   assertControlStyle,
   assertEraserScale,
@@ -31,6 +32,7 @@ import {
 import type {
   AvailabilityDetail,
   Boundary,
+  CanvasBackground,
   ColorPicker,
   ControlStyle,
   CursorStyle,
@@ -46,6 +48,7 @@ const DEFAULT_SERIALIZATION: Serialization = 'blob'
 const DEFAULT_COLOR_PICKER: ColorPicker = 'crayon'
 const DEFAULT_SELECTED_CRAYON: SelectedCrayon = 'full'
 const DEFAULT_BOUNDARY: Boundary = 'on'
+const DEFAULT_CANVAS_BACKGROUND: CanvasBackground = 'white'
 const DEFAULT_WIDTH_CONTROLS: WidthControls = 'off'
 const DEFAULT_CONTROL_STYLE: ControlStyle = 'icon'
 const DEFAULT_STROKE_WIDTH = 5
@@ -79,6 +82,7 @@ class MagicCrayon extends HTMLElement {
     'color-picker',
     'selected-crayon',
     'boundary',
+    'canvas-background',
     'control-style',
     'draw-cursor',
     'erase-cursor',
@@ -117,6 +121,7 @@ class MagicCrayon extends HTMLElement {
   protected colorPickerValue: ColorPicker = DEFAULT_COLOR_PICKER
   protected selectedCrayonValue: SelectedCrayon = DEFAULT_SELECTED_CRAYON
   protected boundaryValue: Boundary = DEFAULT_BOUNDARY
+  protected canvasBackgroundValue: CanvasBackground = DEFAULT_CANVAS_BACKGROUND
   protected controlStyleValue: ControlStyle = DEFAULT_CONTROL_STYLE
   protected drawCursorValue: CursorStyle = DEFAULT_DRAW_CURSOR
   protected eraseCursorValue: CursorStyle = DEFAULT_ERASE_CURSOR
@@ -212,6 +217,20 @@ class MagicCrayon extends HTMLElement {
 
     if (this.getAttribute('boundary') !== next) {
       this.setAttribute('boundary', next)
+    }
+  }
+
+  get canvasBackground(): CanvasBackground {
+    return this.canvasBackgroundValue
+  }
+
+  set canvasBackground(value: CanvasBackground) {
+    const next = assertCanvasBackground(value)
+
+    this.applyCanvasBackground(next)
+
+    if (this.getAttribute('canvas-background') !== next) {
+      this.setAttribute('canvas-background', next)
     }
   }
 
@@ -324,6 +343,10 @@ class MagicCrayon extends HTMLElement {
       assertBoundary(value)
     }
 
+    if (qualifiedName === 'canvas-background') {
+      assertCanvasBackground(value)
+    }
+
     if (qualifiedName === 'control-style') {
       assertControlStyle(value)
     }
@@ -382,6 +405,14 @@ class MagicCrayon extends HTMLElement {
       this.boundaryValue = assertBoundary(this.getAttribute('boundary'))
     }
 
+    if (!this.hasAttribute('canvas-background')) {
+      this.setAttribute('canvas-background', DEFAULT_CANVAS_BACKGROUND)
+    } else {
+      this.canvasBackgroundValue = assertCanvasBackground(
+        this.getAttribute('canvas-background'),
+      )
+    }
+
     if (!this.hasAttribute('control-style')) {
       this.setAttribute('control-style', DEFAULT_CONTROL_STYLE)
     } else {
@@ -428,7 +459,10 @@ class MagicCrayon extends HTMLElement {
 
     this.context2d = new Context2D(context, {
       serialization: serializationToEnum[this.serializationValue],
+      backgroundColor: this.getCanvasBackgroundColor(),
     })
+
+    this.applyCanvasBackground(this.canvasBackgroundValue)
 
     this.bindUIEvents()
     this.bindCanvasEvents()
@@ -493,6 +527,14 @@ class MagicCrayon extends HTMLElement {
         this.boundaryValue = newValue
         this.wrap.dataset.boundary = this.boundaryValue
       }
+
+      return
+    }
+
+    if (name === 'canvas-background') {
+      this.applyCanvasBackground(
+        newValue === null ? DEFAULT_CANVAS_BACKGROUND : assertCanvasBackground(newValue),
+      )
 
       return
     }
@@ -593,6 +635,8 @@ class MagicCrayon extends HTMLElement {
   }
 
   protected renderColorButtons(): void {
+    const paletteColors = COLORS.map(color => this.getPaletteColor(color))
+
     this.colors.dataset.picker = this.colorPickerValue
     this.colors.dataset.selectedCrayon = this.selectedCrayonValue
 
@@ -620,14 +664,17 @@ class MagicCrayon extends HTMLElement {
       input.className = 'color-input'
       input.setAttribute('data-color-input', 'true')
       input.setAttribute('aria-label', 'Pick color')
-      input.value = this.selectedColor ?? this.inputRecentColors.at(-1) ?? COLORS[0]
+      input.value =
+        this.selectedColor ??
+        this.inputRecentColors.at(-1) ??
+        this.getPaletteColor(COLORS[0])
 
       this.colors.replaceChildren(input, ...recentButtons)
       return
     }
 
     this.colors.replaceChildren(
-      ...COLORS.map(color => {
+      ...paletteColors.map(color => {
         const button = document.createElement('button')
         const icon = toSvgElement(crayonIcon.cloneNode(true))
 
@@ -663,6 +710,41 @@ class MagicCrayon extends HTMLElement {
       const isActiveDrawSelection = this.activeMode === Mode.DRAW && isSelectedColor
 
       item.setAttribute('aria-pressed', isActiveDrawSelection ? 'true' : 'false')
+    }
+  }
+
+  protected getCanvasBackgroundColor(): string {
+    return this.canvasBackgroundValue === 'black' ? '#000000' : '#ffffff'
+  }
+
+  protected getPaletteColor(color: string): string {
+    if (this.canvasBackgroundValue === 'black' && color === '#000000') {
+      return '#ffffff'
+    }
+
+    return color
+  }
+
+  protected applyCanvasBackground(value: CanvasBackground): void {
+    this.canvasBackgroundValue = value
+    this.wrap.dataset.canvasBackground = value
+
+    if (this.selectedColor === '#000000' && value === 'black') {
+      this.selectedColor = '#ffffff'
+    }
+
+    if (this.selectedColor === '#ffffff' && value === 'white') {
+      this.selectedColor = '#000000'
+    }
+
+    if (this.context2d) {
+      this.context2d.canvasBackgroundColor = this.getCanvasBackgroundColor()
+    }
+    this.renderColorButtons()
+    this.syncColorSelectionState()
+
+    if (this.activeMode === Mode.DRAW && this.selectedColor && this.context2d) {
+      this.context2d.strokeStyle = this.selectedColor
     }
   }
 
@@ -1112,6 +1194,7 @@ class MagicCrayon extends HTMLElement {
 
   protected syncControlUIState(): void {
     this.wrap.dataset.boundary = this.boundaryValue
+    this.wrap.dataset.canvasBackground = this.canvasBackgroundValue
     this.wrap.dataset.widthControls = this.widthControlsValue
     this.colors.dataset.selectedCrayon = this.selectedCrayonValue
     this.syncControlButtonContent()
@@ -1151,6 +1234,7 @@ export { MagicCrayon, TAG_NAME }
 export type {
   AvailabilityDetail,
   Boundary,
+  CanvasBackground,
   ColorPicker,
   ControlStyle,
   CursorStyle,

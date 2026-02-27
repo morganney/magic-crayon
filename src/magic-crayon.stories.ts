@@ -24,6 +24,10 @@ const selectedCrayonOptions = ['full', 'clipped'] as const satisfies readonly No
 const boundaryOptions = ['on', 'off'] as const satisfies readonly NonNullable<
   StoryArgs['boundary']
 >[]
+const canvasBackgroundOptions = [
+  'white',
+  'black',
+] as const satisfies readonly NonNullable<StoryArgs['canvasBackground']>[]
 const controlStyleOptions = ['text', 'icon'] as const satisfies readonly NonNullable<
   StoryArgs['controlStyle']
 >[]
@@ -46,6 +50,7 @@ const meta = {
     colorPicker: 'crayon',
     selectedCrayon: 'full',
     boundary: 'on',
+    canvasBackground: 'white',
     controlStyle: 'icon',
     drawCursor: 'crosshair',
     eraseCursor: 'cell',
@@ -78,6 +83,12 @@ const meta = {
       description: 'Toggle the default outer visual boundary cue.',
       control: { type: 'inline-radio' },
       options: boundaryOptions,
+    },
+    canvasBackground: {
+      name: 'canvas-background',
+      description: 'Set canvas background color mode.',
+      control: { type: 'inline-radio' },
+      options: canvasBackgroundOptions,
     },
     controlStyle: {
       name: 'control-style',
@@ -134,6 +145,7 @@ const meta = {
     colorPicker,
     selectedCrayon,
     boundary,
+    canvasBackground,
     controlStyle,
     drawCursor,
     eraseCursor,
@@ -157,6 +169,7 @@ const meta = {
     element.setAttribute('color-picker', colorPicker)
     element.setAttribute('selected-crayon', selectedCrayon)
     element.setAttribute('boundary', boundary)
+    element.setAttribute('canvas-background', canvasBackground)
     element.setAttribute('control-style', controlStyle)
     element.setAttribute('draw-cursor', drawCursor)
     element.setAttribute('erase-cursor', eraseCursor)

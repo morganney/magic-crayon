@@ -48,6 +48,10 @@ describe('magic-crayon', () => {
     }).toThrow(TypeError)
 
     expect(() => {
+      node.setAttribute('canvas-background', 'invalid')
+    }).toThrow(TypeError)
+
+    expect(() => {
       node.setAttribute('control-style', 'invalid')
     }).toThrow(TypeError)
 
@@ -62,6 +66,22 @@ describe('magic-crayon', () => {
     expect(() => {
       node.setAttribute('eraser-scale', '0')
     }).toThrow(TypeError)
+  })
+
+  it('throws when template clone is not a DocumentFragment', () => {
+    const cloneSpy = vi
+      .spyOn(DocumentFragment.prototype, 'cloneNode')
+      .mockReturnValue(document.createElement('div'))
+
+    try {
+      const Ctor = customElements.get('magic-crayon') as { new (): HTMLElement }
+
+      expect(() => {
+        new Ctor()
+      }).toThrow('Expected template clone to be a DocumentFragment.')
+    } finally {
+      cloneSpy.mockRestore()
+    }
   })
 
   it('defaults selected crayon visibility to full and allows clipped mode', () => {
@@ -90,6 +110,36 @@ describe('magic-crayon', () => {
 
     expect(node.getAttribute('boundary')).toBe('off')
     expect(wrap?.getAttribute('data-boundary')).toBe('off')
+  })
+
+  it('defaults canvas background to white and remaps black swatch to white on black', () => {
+    const node = createMagicCrayon()
+    const wrap = node.shadowRoot?.querySelector('.wrap')
+
+    node.colorPicker = 'swatch'
+
+    const initialSwatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
+
+    expect(node.canvasBackground).toBe('white')
+    expect(node.getAttribute('canvas-background')).toBe('white')
+    expect(wrap?.getAttribute('data-canvas-background')).toBe('white')
+    expect(initialSwatch?.dataset.color).toBe('#000000')
+
+    node.canvasBackground = 'black'
+
+    const remappedSwatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
+
+    expect(node.getAttribute('canvas-background')).toBe('black')
+    expect(wrap?.getAttribute('data-canvas-background')).toBe('black')
+    expect(remappedSwatch?.dataset.color).toBe('#ffffff')
+
+    node.canvasBackground = 'white'
+
+    const restoredSwatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
+
+    expect(node.getAttribute('canvas-background')).toBe('white')
+    expect(wrap?.getAttribute('data-canvas-background')).toBe('white')
+    expect(restoredSwatch?.dataset.color).toBe('#000000')
   })
 
   it('defaults width controls to off and allows turning them on', () => {
@@ -457,6 +507,28 @@ describe('magic-crayon', () => {
     expect(typeof event.detail.timestamp).toBe('string')
   })
 
+  it('reports black background metadata when canvas-background is black', async () => {
+    const node = createMagicCrayon()
+    const eventPromise = new Promise<CustomEvent<SaveDetail>>(resolve => {
+      node.addEventListener(
+        'save',
+        event => {
+          resolve(event as CustomEvent<SaveDetail>)
+        },
+        { once: true },
+      )
+    })
+
+    node.canvasBackground = 'black'
+    node.shadowRoot
+      ?.querySelector<HTMLButtonElement>('[data-action="save"]')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    const event = await eventPromise
+
+    expect(event.detail.meta.backgroundColor).toBe('#000000')
+  })
+
   it('emits undo availability event after drawing', async () => {
     const node = createMagicCrayon()
     const canvas = node.shadowRoot?.querySelector<HTMLCanvasElement>('canvas')
@@ -604,6 +676,22 @@ describe('magic-crayon', () => {
     expect(wrap?.dataset.widthControls).toBe('on')
     expect(strokeSlider?.value).toBe('7')
     expect(eraserSlider?.value).toBe('2')
+  })
+
+  it('applies preset canvas/control/cursor attributes on connect', () => {
+    const node = document.createElement('magic-crayon') as MagicCrayon
+
+    node.setAttribute('canvas-background', 'black')
+    node.setAttribute('control-style', 'text')
+    node.setAttribute('draw-cursor', 'pointer')
+    node.setAttribute('erase-cursor', 'grab')
+
+    document.body.append(node)
+
+    expect(node.canvasBackground).toBe('black')
+    expect(node.controlStyle).toBe('text')
+    expect(node.drawCursor).toBe('pointer')
+    expect(node.eraseCursor).toBe('grab')
   })
 
   it('throws when connected callback cannot get a 2d context', () => {
@@ -1045,6 +1133,88 @@ describe('magic-crayon', () => {
 
     eraser?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(canvas?.style.cursor).toBe('grab')
+  })
+
+  it('updates active draw stroke style when remapping canvas background colors', () => {
+    const node = createMagicCrayon()
+    const swatches = node.shadowRoot?.querySelectorAll<HTMLButtonElement>('.swatch')
+    const blackSwatch = swatches?.item(0)
+    const context2d = (node as unknown as { context2d?: { strokeStyle: string } })
+      .context2d
+
+    expect(blackSwatch && context2d).toBeTruthy()
+
+    blackSwatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(context2d?.strokeStyle).toBe('#000000')
+
+    node.canvasBackground = 'black'
+    expect(context2d?.strokeStyle).toBe('#ffffff')
+
+    node.canvasBackground = 'white'
+    expect(context2d?.strokeStyle).toBe('#000000')
+  })
+
+  it('covers color input guard paths and duplicate/overflow recent-color branches', () => {
+    const node = createMagicCrayon()
+    const colors = node.shadowRoot?.querySelector('.colors')
+
+    expect(colors).toBeTruthy()
+
+    node.colorPicker = 'input'
+
+    colors?.dispatchEvent(new Event('input', { bubbles: true }))
+
+    const passthroughInput = document.createElement('input')
+
+    passthroughInput.type = 'color'
+    colors?.append(passthroughInput)
+    passthroughInput.dispatchEvent(new Event('input', { bubbles: true }))
+
+    expect(
+      (
+        node as unknown as { pushInputRecentColor: (value: string) => boolean }
+      ).pushInputRecentColor('#111111'),
+    ).toBe(true)
+    expect(
+      (
+        node as unknown as { pushInputRecentColor: (value: string) => boolean }
+      ).pushInputRecentColor('#111111'),
+    ).toBe(false)
+
+    const internals = node as unknown as {
+      inputRecentColors: string[]
+      inputRecentColorUsage: Map<string, number>
+      pushInputRecentColor: (value: string) => boolean
+    }
+
+    internals.inputRecentColors = ['#111111', '#222222', '#333333', '#444444', '#555555']
+    internals.inputRecentColorUsage = new Map([
+      ['#111111', 1],
+      ['#222222', 2],
+      ['#333333', 3],
+      ['#444444', 4],
+      ['#555555', 5],
+    ])
+
+    const findIndexSpy = vi
+      .spyOn(internals.inputRecentColors, 'findIndex')
+      .mockReturnValue(-1)
+
+    expect(internals.pushInputRecentColor('#666666')).toBe(false)
+    findIndexSpy.mockRestore()
+  })
+
+  it('sets default selected draw color when entering draw mode without selection', () => {
+    const node = createMagicCrayon()
+    const internals = node as unknown as {
+      selectedColor: string | null
+      syncToolState: (mode: 'draw' | 'erase') => void
+    }
+
+    internals.selectedColor = null
+    internals.syncToolState('draw')
+
+    expect(internals.selectedColor).toBe('#000000')
   })
 
   it('syncs context line width when width values change in active modes', () => {

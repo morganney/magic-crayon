@@ -27,6 +27,7 @@ type ContextState = Partial<{
   lineWidth: number
   compositing: GlobalCompositeOperation
   serialization: Serializations
+  backgroundColor: string
 }>
 type Context2DMetaData = {
   resolution: [width: string, height: string]
@@ -53,6 +54,7 @@ class Context2D {
   protected snapshot: ImageData = new ImageData(this.viewWidth, this.viewHeight)
   protected snapshotDirty: boolean = false
   protected serialization: Serializations = Serializations.BLOB
+  protected backgroundColor: string = '#ffffff'
   protected activeStroke: PolyLineRecord | null = null
 
   constructor(context: CanvasRenderingContext2D, options?: ContextState) {
@@ -63,6 +65,14 @@ class Context2D {
     if (options?.serialization) {
       this.serialization = options.serialization
     }
+
+    if (options?.backgroundColor) {
+      this.backgroundColor = options.backgroundColor
+    }
+  }
+
+  set canvasBackgroundColor(value: string) {
+    this.backgroundColor = value
   }
 
   set pencilMode(value: Mode) {
@@ -473,7 +483,7 @@ class Context2D {
     return {
       view: [this.width.toString(), this.height.toString()],
       resolution: [width.toString(), height.toString()],
-      backgroundColor: '#ffffff',
+      backgroundColor: this.backgroundColor,
     }
   }
 
