@@ -37,6 +37,7 @@ type CustomNumberEventListener = (evt: CustomEvent<number>) => void
 type PolyLineRecord = {
   context: CanvasRenderingContext2D
   mode: Mode
+  snapshotBefore: ImageData | null
 }
 
 class Context2D {
@@ -247,8 +248,22 @@ class Context2D {
     return ctx
   }
 
+  protected cloneImageData(source: ImageData): ImageData {
+    return new ImageData(new Uint8ClampedArray(source.data), source.width, source.height)
+  }
+
+  protected putSnapshot(snapshot: ImageData): void {
+    this.clearRect()
+    this.raster.putImageData(snapshot, 0, 0)
+  }
+
   protected pushUndo(context: CanvasRenderingContext2D): void {
-    const polyline: PolyLineRecord = { context, mode: this.mode }
+    const polyline: PolyLineRecord = {
+      context,
+      mode: this.mode,
+      snapshotBefore:
+        this.mode === Mode.ERASE ? this.cloneImageData(this.snapshot) : null,
+    }
 
     context.globalCompositeOperation = Composites.DRAW
     this.undo.push(polyline)
@@ -315,6 +330,15 @@ class Context2D {
 
   applyUndo(): void {
     const undo = this.undo.pop()
+
+    if (undo.mode === Mode.ERASE && undo.snapshotBefore) {
+      this.redo.push(undo)
+      this.putSnapshot(undo.snapshotBefore)
+      this.setSnapshot()
+
+      return
+    }
+
     const origCompositeOp = undo.context.globalCompositeOperation
 
     this.redo.push(undo)
