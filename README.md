@@ -16,6 +16,10 @@ It ships as a native custom element: `<magic-crayon>`.
 - Two color picker experiences:
   - `crayon` (default)
   - `swatch`
+  - `input`
+- Configurable canvas background:
+  - `canvas-background`: `white` (default) or `black`
+  - in `black` mode, the built-in black crayon/swatch is remapped to white for contrast
 - Configurable selected crayon presentation:
   - `full` (default)
   - `clipped`
@@ -78,6 +82,7 @@ if (!customElements.get(TAG_NAME)) {
   color-picker="crayon"
   selected-crayon="full"
   boundary="on"
+  canvas-background="white"
   control-style="icon"
   draw-cursor="crosshair"
   erase-cursor="cell"
@@ -101,9 +106,10 @@ if (!customElements.get(TAG_NAME)) {
 ## Attributes
 
 - `serialization`: `blob | dataurl` (default: `blob`)
-- `color-picker`: `crayon | swatch` (default: `crayon`)
+- `color-picker`: `crayon | swatch | input` (default: `crayon`)
 - `selected-crayon`: `full | clipped` (default: `full`)
 - `boundary`: `on | off` (default: `on`)
+- `canvas-background`: `white | black` (default: `white`)
 - `control-style`: `text | icon` (default: `icon`)
 - `draw-cursor`: any valid CSS cursor string (default: `crosshair`)
 - `erase-cursor`: any valid CSS cursor string (default: `cell`)
@@ -117,6 +123,7 @@ if (!customElements.get(TAG_NAME)) {
 - `colorPicker: 'crayon' | 'swatch' | 'input'`
 - `selectedCrayon: 'full' | 'clipped'`
 - `boundary: 'on' | 'off'`
+- `canvasBackground: 'white' | 'black'`
 - `controlStyle: 'text' | 'icon'`
 - `drawCursor: string`
 - `eraseCursor: string`

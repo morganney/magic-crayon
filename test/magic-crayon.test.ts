@@ -48,6 +48,10 @@ describe('magic-crayon', () => {
     }).toThrow(TypeError)
 
     expect(() => {
+      node.setAttribute('canvas-background', 'invalid')
+    }).toThrow(TypeError)
+
+    expect(() => {
       node.setAttribute('control-style', 'invalid')
     }).toThrow(TypeError)
 
@@ -90,6 +94,28 @@ describe('magic-crayon', () => {
 
     expect(node.getAttribute('boundary')).toBe('off')
     expect(wrap?.getAttribute('data-boundary')).toBe('off')
+  })
+
+  it('defaults canvas background to white and remaps black swatch to white on black', () => {
+    const node = createMagicCrayon()
+    const wrap = node.shadowRoot?.querySelector('.wrap')
+
+    node.colorPicker = 'swatch'
+
+    const initialSwatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
+
+    expect(node.canvasBackground).toBe('white')
+    expect(node.getAttribute('canvas-background')).toBe('white')
+    expect(wrap?.getAttribute('data-canvas-background')).toBe('white')
+    expect(initialSwatch?.dataset.color).toBe('#000000')
+
+    node.canvasBackground = 'black'
+
+    const remappedSwatch = node.shadowRoot?.querySelector<HTMLButtonElement>('.swatch')
+
+    expect(node.getAttribute('canvas-background')).toBe('black')
+    expect(wrap?.getAttribute('data-canvas-background')).toBe('black')
+    expect(remappedSwatch?.dataset.color).toBe('#ffffff')
   })
 
   it('defaults width controls to off and allows turning them on', () => {
@@ -455,6 +481,28 @@ describe('magic-crayon', () => {
     expect(typeof event.detail.data).toBe('string')
     expect(event.detail.meta.backgroundColor).toBe('#ffffff')
     expect(typeof event.detail.timestamp).toBe('string')
+  })
+
+  it('reports black background metadata when canvas-background is black', async () => {
+    const node = createMagicCrayon()
+    const eventPromise = new Promise<CustomEvent<SaveDetail>>(resolve => {
+      node.addEventListener(
+        'save',
+        event => {
+          resolve(event as CustomEvent<SaveDetail>)
+        },
+        { once: true },
+      )
+    })
+
+    node.canvasBackground = 'black'
+    node.shadowRoot
+      ?.querySelector<HTMLButtonElement>('[data-action="save"]')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    const event = await eventPromise
+
+    expect(event.detail.meta.backgroundColor).toBe('#000000')
   })
 
   it('emits undo availability event after drawing', async () => {

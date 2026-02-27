@@ -46,6 +46,10 @@
   background-color: var(--magic-crayon-boundary-bg);
 }
 
+.wrap[data-canvas-background='black'] {
+  --magic-crayon-canvas-bg: #000000;
+}
+
 .canvas-wrap {
   width: 100%;
   aspect-ratio: 16 / 9;
