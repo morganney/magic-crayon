@@ -70,7 +70,9 @@ const minifyRawInlineAssets = () => ({
 
 const emitPreviewFixture = (): Plugin => ({
   name: 'emit-preview-fixture',
-  apply: 'build' as const,
+  apply(config, { command }) {
+    return command === 'build' && config.build?.outDir === 'dist'
+  },
   async generateBundle() {
     const fixture = await readFile('index.html', 'utf8')
 
