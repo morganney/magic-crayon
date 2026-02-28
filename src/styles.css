@@ -22,7 +22,7 @@
   height: 100%;
   min-height: 0;
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: center;
   contain: content;
   container-type: inline-size;
@@ -33,11 +33,24 @@
   position: relative;
   width: 100%;
   max-width: 100%;
-  margin-top: auto;
+  margin-top: 0;
   overflow: hidden;
   display: grid;
   grid-template-rows: auto auto;
   gap: 0;
+  align-self: flex-end;
+}
+
+.wrap[data-anchor='top'] {
+  align-self: flex-start;
+}
+
+.wrap[data-anchor='center'] {
+  align-self: center;
+}
+
+.wrap[data-anchor='bottom'] {
+  align-self: flex-end;
 }
 
 .wrap[data-boundary='on'] {

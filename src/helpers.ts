@@ -1,5 +1,6 @@
 import { Serializations } from './context2d.js'
 import type {
+  Anchor,
   Boundary,
   CanvasBackground,
   ColorPicker,
@@ -96,6 +97,14 @@ export const assertBoundary = (value: string | null): Boundary => {
   }
 
   throw new TypeError('boundary must be either "on" or "off".')
+}
+
+export const assertAnchor = (value: string | null): Anchor => {
+  if (value === 'top' || value === 'center' || value === 'bottom') {
+    return value
+  }
+
+  throw new TypeError('anchor must be either "top", "center", or "bottom".')
 }
 
 export const assertWidthControls = (value: string | null): WidthControls => {

@@ -12,6 +12,8 @@ It ships as a native custom element: `<magic-crayon>`.
 
 - Native custom element (`magic-crayon`) with Shadow DOM encapsulation
 - 16:9 drawing surface with automatic resize handling
+- Configurable vertical anchor within host area:
+  - `anchor`: `top`, `center`, or `bottom` (default)
 - Undo/redo/clear controls
 - Two color picker experiences:
   - `crayon` (default)
@@ -81,6 +83,7 @@ if (!customElements.get(TAG_NAME)) {
   serialization="blob"
   color-picker="crayon"
   selected-crayon="full"
+  anchor="bottom"
   boundary="on"
   canvas-background="white"
   control-style="icon"
@@ -108,6 +111,7 @@ if (!customElements.get(TAG_NAME)) {
 - `serialization`: `blob | dataurl` (default: `blob`)
 - `color-picker`: `crayon | swatch | input` (default: `crayon`)
 - `selected-crayon`: `full | clipped` (default: `full`)
+- `anchor`: `top | center | bottom` (default: `bottom`)
 - `boundary`: `on | off` (default: `on`)
 - `canvas-background`: `white | black` (default: `white`)
 - `control-style`: `text | icon` (default: `icon`)
@@ -122,6 +126,7 @@ if (!customElements.get(TAG_NAME)) {
 - `serialization: 'blob' | 'dataurl'`
 - `colorPicker: 'crayon' | 'swatch' | 'input'`
 - `selectedCrayon: 'full' | 'clipped'`
+- `anchor: 'top' | 'center' | 'bottom'`
 - `boundary: 'on' | 'off'`
 - `canvasBackground: 'white' | 'black'`
 - `controlStyle: 'text' | 'icon'`
