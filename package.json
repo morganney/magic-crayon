@@ -7,9 +7,11 @@
   "bugs": {
     "url": "https://github.com/morganney/magic-crayon/issues"
   },
+  "author": "Morgan Ney <morganney@gmail.com>",
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/morganney/magic-crayon"
+    "url": "git+https://github.com/morganney/magic-crayon.git"
   },
   "types": "./dist/magic-crayon.d.ts",
   "exports": {
@@ -22,6 +24,17 @@
       "import": "./dist/defined.js"
     }
   },
+  "keywords": [
+    "web-component",
+    "custom-element",
+    "canvas",
+    "drawing",
+    "paint",
+    "sketch",
+    "undo-redo",
+    "color-picker",
+    "hidpi"
+  ],
   "sideEffects": [
     "./dist/defined.js"
   ],
@@ -43,6 +56,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test": "vitest --run",
+    "test:smoke": "vitest --run -c vitest.smoke.config.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest --run --coverage",
     "prepare": "husky",
