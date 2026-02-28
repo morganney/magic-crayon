@@ -15,7 +15,7 @@ It ships as a native custom element: `<magic-crayon>`.
 - Configurable vertical anchor within host area:
   - `anchor`: `top`, `center`, or `bottom` (default)
 - Undo/redo/clear controls
-- Two color picker experiences:
+- Three color picker experiences:
   - `crayon` (default)
   - `swatch`
   - `input`
