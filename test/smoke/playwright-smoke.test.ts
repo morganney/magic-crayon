@@ -52,6 +52,21 @@ describe('playwright smoke', () => {
       )
     })
 
+    if (canvas) {
+      Object.defineProperty(canvas, 'setPointerCapture', {
+        value: () => undefined,
+        configurable: true,
+      })
+      Object.defineProperty(canvas, 'hasPointerCapture', {
+        value: () => false,
+        configurable: true,
+      })
+      Object.defineProperty(canvas, 'releasePointerCapture', {
+        value: () => undefined,
+        configurable: true,
+      })
+    }
+
     swatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     canvas?.dispatchEvent(
       new PointerEvent('pointerdown', {
