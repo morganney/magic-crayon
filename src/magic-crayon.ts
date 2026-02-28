@@ -8,6 +8,7 @@ import undoSvg from '../assets/undo.svg?raw'
 import templateHtml from './template.html?raw'
 import stylesCss from './styles.css?raw'
 import {
+  assertAnchor,
   assertBoundary,
   assertCanvasBackground,
   assertColorPicker,
@@ -30,6 +31,7 @@ import {
   toSvgElement,
 } from './helpers.js'
 import type {
+  Anchor,
   AvailabilityDetail,
   Boundary,
   CanvasBackground,
@@ -48,6 +50,7 @@ const DEFAULT_SERIALIZATION: Serialization = 'blob'
 const DEFAULT_COLOR_PICKER: ColorPicker = 'crayon'
 const DEFAULT_SELECTED_CRAYON: SelectedCrayon = 'full'
 const DEFAULT_BOUNDARY: Boundary = 'on'
+const DEFAULT_ANCHOR: Anchor = 'bottom'
 const DEFAULT_CANVAS_BACKGROUND: CanvasBackground = 'white'
 const DEFAULT_WIDTH_CONTROLS: WidthControls = 'off'
 const DEFAULT_CONTROL_STYLE: ControlStyle = 'icon'
@@ -82,6 +85,7 @@ class MagicCrayon extends HTMLElement {
     'color-picker',
     'selected-crayon',
     'boundary',
+    'anchor',
     'canvas-background',
     'control-style',
     'draw-cursor',
@@ -121,6 +125,7 @@ class MagicCrayon extends HTMLElement {
   protected colorPickerValue: ColorPicker = DEFAULT_COLOR_PICKER
   protected selectedCrayonValue: SelectedCrayon = DEFAULT_SELECTED_CRAYON
   protected boundaryValue: Boundary = DEFAULT_BOUNDARY
+  protected anchorValue: Anchor = DEFAULT_ANCHOR
   protected canvasBackgroundValue: CanvasBackground = DEFAULT_CANVAS_BACKGROUND
   protected controlStyleValue: ControlStyle = DEFAULT_CONTROL_STYLE
   protected drawCursorValue: CursorStyle = DEFAULT_DRAW_CURSOR
@@ -217,6 +222,21 @@ class MagicCrayon extends HTMLElement {
 
     if (this.getAttribute('boundary') !== next) {
       this.setAttribute('boundary', next)
+    }
+  }
+
+  get anchor(): Anchor {
+    return this.anchorValue
+  }
+
+  set anchor(value: Anchor) {
+    const next = assertAnchor(value)
+
+    this.anchorValue = next
+    this.wrap.dataset.anchor = next
+
+    if (this.getAttribute('anchor') !== next) {
+      this.setAttribute('anchor', next)
     }
   }
 
@@ -343,6 +363,10 @@ class MagicCrayon extends HTMLElement {
       assertBoundary(value)
     }
 
+    if (qualifiedName === 'anchor') {
+      assertAnchor(value)
+    }
+
     if (qualifiedName === 'canvas-background') {
       assertCanvasBackground(value)
     }
@@ -403,6 +427,12 @@ class MagicCrayon extends HTMLElement {
       this.setAttribute('boundary', DEFAULT_BOUNDARY)
     } else {
       this.boundaryValue = assertBoundary(this.getAttribute('boundary'))
+    }
+
+    if (!this.hasAttribute('anchor')) {
+      this.setAttribute('anchor', DEFAULT_ANCHOR)
+    } else {
+      this.anchorValue = assertAnchor(this.getAttribute('anchor'))
     }
 
     if (!this.hasAttribute('canvas-background')) {
@@ -527,6 +557,13 @@ class MagicCrayon extends HTMLElement {
         this.boundaryValue = newValue
         this.wrap.dataset.boundary = this.boundaryValue
       }
+
+      return
+    }
+
+    if (name === 'anchor') {
+      this.anchorValue = newValue === null ? DEFAULT_ANCHOR : assertAnchor(newValue)
+      this.wrap.dataset.anchor = this.anchorValue
 
       return
     }
@@ -1194,6 +1231,7 @@ class MagicCrayon extends HTMLElement {
 
   protected syncControlUIState(): void {
     this.wrap.dataset.boundary = this.boundaryValue
+    this.wrap.dataset.anchor = this.anchorValue
     this.wrap.dataset.canvasBackground = this.canvasBackgroundValue
     this.wrap.dataset.widthControls = this.widthControlsValue
     this.colors.dataset.selectedCrayon = this.selectedCrayonValue
@@ -1232,6 +1270,7 @@ declare global {
 
 export { MagicCrayon, TAG_NAME }
 export type {
+  Anchor,
   AvailabilityDetail,
   Boundary,
   CanvasBackground,

@@ -21,6 +21,9 @@ const colorPickerOptions = [
 const selectedCrayonOptions = ['full', 'clipped'] as const satisfies readonly NonNullable<
   StoryArgs['selectedCrayon']
 >[]
+const anchorOptions = ['top', 'center', 'bottom'] as const satisfies readonly NonNullable<
+  StoryArgs['anchor']
+>[]
 const boundaryOptions = ['on', 'off'] as const satisfies readonly NonNullable<
   StoryArgs['boundary']
 >[]
@@ -49,6 +52,7 @@ const meta = {
     serialization: 'blob',
     colorPicker: 'crayon',
     selectedCrayon: 'full',
+    anchor: 'bottom',
     boundary: 'on',
     canvasBackground: 'white',
     controlStyle: 'icon',
@@ -77,6 +81,12 @@ const meta = {
       description: 'Control selected crayon visibility in crayon picker mode.',
       control: { type: 'inline-radio' },
       options: selectedCrayonOptions,
+    },
+    anchor: {
+      name: 'anchor',
+      description: 'Anchor the component vertically within its host area.',
+      control: { type: 'inline-radio' },
+      options: anchorOptions,
     },
     boundary: {
       name: 'boundary',
@@ -144,6 +154,7 @@ const meta = {
     serialization,
     colorPicker,
     selectedCrayon,
+    anchor,
     boundary,
     canvasBackground,
     controlStyle,
@@ -168,6 +179,7 @@ const meta = {
     element.setAttribute('serialization', serialization)
     element.setAttribute('color-picker', colorPicker)
     element.setAttribute('selected-crayon', selectedCrayon)
+    element.setAttribute('anchor', anchor)
     element.setAttribute('boundary', boundary)
     element.setAttribute('canvas-background', canvasBackground)
     element.setAttribute('control-style', controlStyle)

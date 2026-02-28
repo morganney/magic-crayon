@@ -48,6 +48,10 @@ describe('magic-crayon', () => {
     }).toThrow(TypeError)
 
     expect(() => {
+      node.setAttribute('anchor', 'invalid')
+    }).toThrow(TypeError)
+
+    expect(() => {
       node.setAttribute('canvas-background', 'invalid')
     }).toThrow(TypeError)
 
@@ -110,6 +114,25 @@ describe('magic-crayon', () => {
 
     expect(node.getAttribute('boundary')).toBe('off')
     expect(wrap?.getAttribute('data-boundary')).toBe('off')
+  })
+
+  it('defaults anchor to bottom and allows top/center anchoring', () => {
+    const node = createMagicCrayon()
+    const wrap = node.shadowRoot?.querySelector('.wrap')
+
+    expect(node.anchor).toBe('bottom')
+    expect(node.getAttribute('anchor')).toBe('bottom')
+    expect(wrap?.getAttribute('data-anchor')).toBe('bottom')
+
+    node.anchor = 'top'
+
+    expect(node.getAttribute('anchor')).toBe('top')
+    expect(wrap?.getAttribute('data-anchor')).toBe('top')
+
+    node.anchor = 'center'
+
+    expect(node.getAttribute('anchor')).toBe('center')
+    expect(wrap?.getAttribute('data-anchor')).toBe('center')
   })
 
   it('defaults canvas background to white and remaps black swatch to white on black', () => {
