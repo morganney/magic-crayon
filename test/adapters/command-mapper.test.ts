@@ -48,6 +48,27 @@ describe('command mapper helpers', () => {
     })
   })
 
+  it('parseCommandFromKindAndPayload parses draw-line normalized kind', () => {
+    const command = parseCommandFromKindAndPayload('  DRAW_LINE  ', {
+      start: { x: 10, y: 20 },
+      end: { x: 90, y: 80 },
+      style: {
+        strokeWidth: 3,
+        color: '#3366cc',
+      },
+    })
+
+    expect(command).toEqual({
+      kind: 'draw-line',
+      start: { x: 10, y: 20 },
+      end: { x: 90, y: 80 },
+      style: {
+        strokeWidth: 3,
+        color: '#3366cc',
+      },
+    })
+  })
+
   it('parseCommandFromKindAndPayload parses draw-rect normalized kind', () => {
     const command = parseCommandFromKindAndPayload('  DRAW_RECT  ', {
       rect: {
@@ -130,6 +151,25 @@ describe('command mapper helpers', () => {
         color: '#ff8800',
       },
       segments: 12,
+    })
+  })
+
+  it('parseCommandFromKindAndPayload parses fill-rect normalized kind', () => {
+    const command = parseCommandFromKindAndPayload('  FILL_RECT  ', {
+      rect: { x: 20, y: 20, width: 30, height: 20 },
+      style: {
+        strokeWidth: 4,
+        color: '#44aa44',
+      },
+    })
+
+    expect(command).toEqual({
+      kind: 'fill-rect',
+      rect: { x: 20, y: 20, width: 30, height: 20 },
+      style: {
+        strokeWidth: 4,
+        color: '#44aa44',
+      },
     })
   })
 

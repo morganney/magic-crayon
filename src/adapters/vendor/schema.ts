@@ -12,6 +12,17 @@ const drawPathToolSchema = z.object({
   }),
 })
 
+const drawLineToolSchema = z.object({
+  start: z.object({ x: z.number(), y: z.number() }),
+  end: z.object({ x: z.number(), y: z.number() }),
+  style: z.object({
+    strokeWidth: z.number().finite().positive(),
+    lineCap: z.enum(['butt', 'round', 'square']).optional(),
+    lineJoin: z.enum(['bevel', 'round', 'miter']).optional(),
+    color: z.string().min(1).optional(),
+  }),
+})
+
 const erasePathToolSchema = z.object({
   points: z.array(z.object({ x: z.number(), y: z.number() })).min(2),
   style: z.object({
@@ -118,6 +129,36 @@ const drawArcToolSchema = z.object({
   segments: z.number().int().min(8).max(128).optional(),
 })
 
+const fillRectToolSchema = z.object({
+  rect: z.object({
+    x: z.number(),
+    y: z.number(),
+    width: z.number().finite().positive().max(100),
+    height: z.number().finite().positive().max(100),
+  }),
+  style: z.object({
+    strokeWidth: z.number().finite().positive(),
+    color: z.string().min(1).optional(),
+  }),
+})
+
+const fillCircleToolSchema = z.object({
+  center: z.object({ x: z.number(), y: z.number() }),
+  radius: z.number().finite().positive().max(100),
+  style: z.object({
+    strokeWidth: z.number().finite().positive(),
+    color: z.string().min(1).optional(),
+  }),
+})
+
+const fillPolygonToolSchema = z.object({
+  points: z.array(z.object({ x: z.number(), y: z.number() })).min(3),
+  style: z.object({
+    strokeWidth: z.number().finite().positive(),
+    color: z.string().min(1).optional(),
+  }),
+})
+
 const eraseRectToolSchema = z.union([
   z.object({
     rect: z.object({
@@ -147,9 +188,13 @@ export {
   directCommandsSchema,
   drawCircleToolSchema,
   drawEllipseToolSchema,
+  drawLineToolSchema,
   drawPathToolSchema,
   drawPolygonToolSchema,
   drawRectToolSchema,
+  fillCircleToolSchema,
+  fillPolygonToolSchema,
+  fillRectToolSchema,
   erasePathToolSchema,
   eraseRectToolSchema,
   noPayloadToolSchema,

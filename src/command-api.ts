@@ -25,6 +25,13 @@ export type DrawPathCommand = {
   style: CommandStrokeStyle
 }
 
+export type DrawLineCommand = {
+  kind: 'draw-line'
+  start: NormalizedPoint
+  end: NormalizedPoint
+  style: CommandStrokeStyle
+}
+
 export type DrawCircleCommand = {
   kind: 'draw-circle'
   center: NormalizedPoint
@@ -74,6 +81,25 @@ export type DrawArcCommand = {
   segments?: number
 }
 
+export type FillRectCommand = {
+  kind: 'fill-rect'
+  rect: NormalizedRect
+  style: CommandStrokeStyle
+}
+
+export type FillCircleCommand = {
+  kind: 'fill-circle'
+  center: NormalizedPoint
+  radius: number
+  style: CommandStrokeStyle
+}
+
+export type FillPolygonCommand = {
+  kind: 'fill-polygon'
+  points: NormalizedPoint[]
+  style: CommandStrokeStyle
+}
+
 export type ErasePathCommand = {
   kind: 'erase-path'
   points: NormalizedPoint[]
@@ -104,12 +130,16 @@ export type ReplaceDocumentCommand = {
 
 export type MagicCrayonCommandV1 =
   | DrawPathCommand
+  | DrawLineCommand
   | DrawCircleCommand
   | DrawRectCommand
   | DrawBezierCommand
   | DrawEllipseCommand
   | DrawPolygonCommand
   | DrawArcCommand
+  | FillRectCommand
+  | FillCircleCommand
+  | FillPolygonCommand
   | ErasePathCommand
   | EraseRectCommand
   | ClearCommand

@@ -186,6 +186,124 @@ const toArcPoints = (
   return points
 }
 
+const toFillRectStrokeCommands = (
+  rect: NormalizedRect,
+  lineWidth: number,
+  strokeStyle: string,
+): StrokeCommand[] => {
+  const strokes: StrokeCommand[] = []
+  const top = rect.y
+  const bottom = rect.y + rect.height
+  const left = rect.x
+  const right = rect.x + rect.width
+
+  for (let y = top; y <= bottom; y += lineWidth) {
+    strokes.push({
+      mode: 'draw',
+      strokeStyle,
+      lineCap: 'butt',
+      lineJoin: 'round',
+      lineWidth,
+      compositing: Composites.DRAW,
+      sourceWidth: SOURCE_SPACE_SIZE,
+      sourceHeight: SOURCE_SPACE_SIZE,
+      points: [
+        { x: left, y: Math.min(bottom, y) },
+        { x: right, y: Math.min(bottom, y) },
+      ],
+    })
+  }
+
+  return strokes
+}
+
+const toFillCircleStrokeCommands = (
+  center: NormalizedPoint,
+  radius: number,
+  lineWidth: number,
+  strokeStyle: string,
+): StrokeCommand[] => {
+  const strokes: StrokeCommand[] = []
+  const top = Math.max(0, center.y - radius)
+  const bottom = Math.min(100, center.y + radius)
+
+  for (let y = top; y <= bottom; y += lineWidth) {
+    const dy = y - center.y
+    const dx = Math.sqrt(Math.max(0, radius * radius - dy * dy))
+    const left = Math.max(0, center.x - dx)
+    const right = Math.min(100, center.x + dx)
+
+    strokes.push({
+      mode: 'draw',
+      strokeStyle,
+      lineCap: 'butt',
+      lineJoin: 'round',
+      lineWidth,
+      compositing: Composites.DRAW,
+      sourceWidth: SOURCE_SPACE_SIZE,
+      sourceHeight: SOURCE_SPACE_SIZE,
+      points: [
+        { x: left, y },
+        { x: right, y },
+      ],
+    })
+  }
+
+  return strokes
+}
+
+const toFillPolygonStrokeCommands = (
+  polygon: NormalizedPoint[],
+  lineWidth: number,
+  strokeStyle: string,
+): StrokeCommand[] => {
+  const strokes: StrokeCommand[] = []
+  const minY = Math.max(0, Math.min(...polygon.map(point => point.y)))
+  const maxY = Math.min(100, Math.max(...polygon.map(point => point.y)))
+
+  for (let y = minY; y <= maxY; y += lineWidth) {
+    const intersections: number[] = []
+
+    for (let index = 0; index < polygon.length; index += 1) {
+      const nextIndex = (index + 1) % polygon.length
+      const pointA = polygon[index]
+      const pointB = polygon[nextIndex]
+
+      const edgeCrosses =
+        (pointA.y <= y && pointB.y > y) || (pointB.y <= y && pointA.y > y)
+
+      if (!edgeCrosses) {
+        continue
+      }
+
+      const x =
+        pointA.x + ((y - pointA.y) * (pointB.x - pointA.x)) / (pointB.y - pointA.y)
+      intersections.push(Math.max(0, Math.min(100, x)))
+    }
+
+    intersections.sort((first, second) => first - second)
+
+    for (let index = 0; index + 1 < intersections.length; index += 2) {
+      strokes.push({
+        mode: 'draw',
+        strokeStyle,
+        lineCap: 'butt',
+        lineJoin: 'round',
+        lineWidth,
+        compositing: Composites.DRAW,
+        sourceWidth: SOURCE_SPACE_SIZE,
+        sourceHeight: SOURCE_SPACE_SIZE,
+        points: [
+          { x: intersections[index], y },
+          { x: intersections[index + 1], y },
+        ],
+      })
+    }
+  }
+
+  return strokes
+}
+
 const toRejected = (
   command: MagicCrayonCommandV1,
   reason: string,
@@ -218,16 +336,20 @@ const toNoop = (
   }
 }
 
-const toStrokeCommand = (command: MagicCrayonCommandV1): StrokeCommand | null => {
+const toStrokeCommands = (command: MagicCrayonCommandV1): StrokeCommand[] | null => {
   if (
     command.kind !== 'draw-path' &&
+    command.kind !== 'draw-line' &&
     command.kind !== 'erase-path' &&
     command.kind !== 'draw-circle' &&
     command.kind !== 'draw-rect' &&
     command.kind !== 'draw-bezier' &&
     command.kind !== 'draw-ellipse' &&
     command.kind !== 'draw-polygon' &&
-    command.kind !== 'draw-arc'
+    command.kind !== 'draw-arc' &&
+    command.kind !== 'fill-rect' &&
+    command.kind !== 'fill-circle' &&
+    command.kind !== 'fill-polygon'
   ) {
     return null
   }
@@ -258,17 +380,46 @@ const toStrokeCommand = (command: MagicCrayonCommandV1): StrokeCommand | null =>
       })
     }
 
-    return {
-      mode: 'draw',
-      strokeStyle: command.style.color ?? DEFAULT_COLOR,
-      lineCap: command.style.lineCap ?? 'round',
-      lineJoin: command.style.lineJoin ?? 'round',
-      lineWidth: command.style.strokeWidth,
-      compositing: Composites.DRAW,
-      sourceWidth: SOURCE_SPACE_SIZE,
-      sourceHeight: SOURCE_SPACE_SIZE,
-      points,
+    return [
+      {
+        mode: 'draw',
+        strokeStyle: command.style.color ?? DEFAULT_COLOR,
+        lineCap: command.style.lineCap ?? 'round',
+        lineJoin: command.style.lineJoin ?? 'round',
+        lineWidth: command.style.strokeWidth,
+        compositing: Composites.DRAW,
+        sourceWidth: SOURCE_SPACE_SIZE,
+        sourceHeight: SOURCE_SPACE_SIZE,
+        points,
+      },
+    ]
+  }
+
+  if (command.kind === 'draw-line') {
+    if (!isNormalizedPoint(command.start) || !isNormalizedPoint(command.end)) {
+      return null
     }
+
+    if (!isFiniteNumber(command.style.strokeWidth) || command.style.strokeWidth <= 0) {
+      return null
+    }
+
+    return [
+      {
+        mode: 'draw',
+        strokeStyle: command.style.color ?? DEFAULT_COLOR,
+        lineCap: command.style.lineCap ?? 'round',
+        lineJoin: command.style.lineJoin ?? 'round',
+        lineWidth: command.style.strokeWidth,
+        compositing: Composites.DRAW,
+        sourceWidth: SOURCE_SPACE_SIZE,
+        sourceHeight: SOURCE_SPACE_SIZE,
+        points: [
+          { x: command.start.x, y: command.start.y },
+          { x: command.end.x, y: command.end.y },
+        ],
+      },
+    ]
   }
 
   if (command.kind === 'draw-rect') {
@@ -284,17 +435,19 @@ const toStrokeCommand = (command: MagicCrayonCommandV1): StrokeCommand | null =>
       return null
     }
 
-    return {
-      mode: 'draw',
-      strokeStyle: command.style.color ?? DEFAULT_COLOR,
-      lineCap: command.style.lineCap ?? 'round',
-      lineJoin: command.style.lineJoin ?? 'round',
-      lineWidth: command.style.strokeWidth,
-      compositing: Composites.DRAW,
-      sourceWidth: SOURCE_SPACE_SIZE,
-      sourceHeight: SOURCE_SPACE_SIZE,
-      points: toRectOutlinePoints(command.rect),
-    }
+    return [
+      {
+        mode: 'draw',
+        strokeStyle: command.style.color ?? DEFAULT_COLOR,
+        lineCap: command.style.lineCap ?? 'round',
+        lineJoin: command.style.lineJoin ?? 'round',
+        lineWidth: command.style.strokeWidth,
+        compositing: Composites.DRAW,
+        sourceWidth: SOURCE_SPACE_SIZE,
+        sourceHeight: SOURCE_SPACE_SIZE,
+        points: toRectOutlinePoints(command.rect),
+      },
+    ]
   }
 
   if (command.kind === 'draw-bezier') {
@@ -317,23 +470,25 @@ const toStrokeCommand = (command: MagicCrayonCommandV1): StrokeCommand | null =>
       return null
     }
 
-    return {
-      mode: 'draw',
-      strokeStyle: command.style.color ?? DEFAULT_COLOR,
-      lineCap: command.style.lineCap ?? 'round',
-      lineJoin: command.style.lineJoin ?? 'round',
-      lineWidth: command.style.strokeWidth,
-      compositing: Composites.DRAW,
-      sourceWidth: SOURCE_SPACE_SIZE,
-      sourceHeight: SOURCE_SPACE_SIZE,
-      points: toBezierPoints(
-        command.start,
-        command.control1,
-        command.control2,
-        command.end,
-        segments,
-      ),
-    }
+    return [
+      {
+        mode: 'draw',
+        strokeStyle: command.style.color ?? DEFAULT_COLOR,
+        lineCap: command.style.lineCap ?? 'round',
+        lineJoin: command.style.lineJoin ?? 'round',
+        lineWidth: command.style.strokeWidth,
+        compositing: Composites.DRAW,
+        sourceWidth: SOURCE_SPACE_SIZE,
+        sourceHeight: SOURCE_SPACE_SIZE,
+        points: toBezierPoints(
+          command.start,
+          command.control1,
+          command.control2,
+          command.end,
+          segments,
+        ),
+      },
+    ]
   }
 
   if (command.kind === 'draw-ellipse') {
@@ -356,17 +511,19 @@ const toStrokeCommand = (command: MagicCrayonCommandV1): StrokeCommand | null =>
       return null
     }
 
-    return {
-      mode: 'draw',
-      strokeStyle: command.style.color ?? DEFAULT_COLOR,
-      lineCap: command.style.lineCap ?? 'round',
-      lineJoin: command.style.lineJoin ?? 'round',
-      lineWidth: command.style.strokeWidth,
-      compositing: Composites.DRAW,
-      sourceWidth: SOURCE_SPACE_SIZE,
-      sourceHeight: SOURCE_SPACE_SIZE,
-      points: toEllipsePoints(command.center, command.radiusX, command.radiusY),
-    }
+    return [
+      {
+        mode: 'draw',
+        strokeStyle: command.style.color ?? DEFAULT_COLOR,
+        lineCap: command.style.lineCap ?? 'round',
+        lineJoin: command.style.lineJoin ?? 'round',
+        lineWidth: command.style.strokeWidth,
+        compositing: Composites.DRAW,
+        sourceWidth: SOURCE_SPACE_SIZE,
+        sourceHeight: SOURCE_SPACE_SIZE,
+        points: toEllipsePoints(command.center, command.radiusX, command.radiusY),
+      },
+    ]
   }
 
   if (command.kind === 'draw-polygon') {
@@ -382,17 +539,19 @@ const toStrokeCommand = (command: MagicCrayonCommandV1): StrokeCommand | null =>
       return null
     }
 
-    return {
-      mode: 'draw',
-      strokeStyle: command.style.color ?? DEFAULT_COLOR,
-      lineCap: command.style.lineCap ?? 'round',
-      lineJoin: command.style.lineJoin ?? 'round',
-      lineWidth: command.style.strokeWidth,
-      compositing: Composites.DRAW,
-      sourceWidth: SOURCE_SPACE_SIZE,
-      sourceHeight: SOURCE_SPACE_SIZE,
-      points: toPolygonPoints(command.points, command.closed !== false),
-    }
+    return [
+      {
+        mode: 'draw',
+        strokeStyle: command.style.color ?? DEFAULT_COLOR,
+        lineCap: command.style.lineCap ?? 'round',
+        lineJoin: command.style.lineJoin ?? 'round',
+        lineWidth: command.style.strokeWidth,
+        compositing: Composites.DRAW,
+        sourceWidth: SOURCE_SPACE_SIZE,
+        sourceHeight: SOURCE_SPACE_SIZE,
+        points: toPolygonPoints(command.points, command.closed !== false),
+      },
+    ]
   }
 
   if (command.kind === 'draw-arc') {
@@ -425,24 +584,87 @@ const toStrokeCommand = (command: MagicCrayonCommandV1): StrokeCommand | null =>
       return null
     }
 
-    return {
-      mode: 'draw',
-      strokeStyle: command.style.color ?? DEFAULT_COLOR,
-      lineCap: command.style.lineCap ?? 'round',
-      lineJoin: command.style.lineJoin ?? 'round',
-      lineWidth: command.style.strokeWidth,
-      compositing: Composites.DRAW,
-      sourceWidth: SOURCE_SPACE_SIZE,
-      sourceHeight: SOURCE_SPACE_SIZE,
-      points: toArcPoints(
-        command.center,
-        command.radius,
-        command.startAngleDegrees,
-        command.endAngleDegrees,
-        command.counterclockwise ?? false,
-        segments,
-      ),
+    return [
+      {
+        mode: 'draw',
+        strokeStyle: command.style.color ?? DEFAULT_COLOR,
+        lineCap: command.style.lineCap ?? 'round',
+        lineJoin: command.style.lineJoin ?? 'round',
+        lineWidth: command.style.strokeWidth,
+        compositing: Composites.DRAW,
+        sourceWidth: SOURCE_SPACE_SIZE,
+        sourceHeight: SOURCE_SPACE_SIZE,
+        points: toArcPoints(
+          command.center,
+          command.radius,
+          command.startAngleDegrees,
+          command.endAngleDegrees,
+          command.counterclockwise ?? false,
+          segments,
+        ),
+      },
+    ]
+  }
+
+  if (command.kind === 'fill-rect') {
+    if (
+      !isNormalizedRect(command.rect) ||
+      command.rect.width <= 0 ||
+      command.rect.height <= 0
+    ) {
+      return null
     }
+
+    if (!isFiniteNumber(command.style.strokeWidth) || command.style.strokeWidth <= 0) {
+      return null
+    }
+
+    return toFillRectStrokeCommands(
+      command.rect,
+      command.style.strokeWidth,
+      command.style.color ?? DEFAULT_COLOR,
+    )
+  }
+
+  if (command.kind === 'fill-circle') {
+    if (!isNormalizedPoint(command.center)) {
+      return null
+    }
+
+    if (!isFiniteNumber(command.radius) || command.radius <= 0 || command.radius > 100) {
+      return null
+    }
+
+    if (!isFiniteNumber(command.style.strokeWidth) || command.style.strokeWidth <= 0) {
+      return null
+    }
+
+    return toFillCircleStrokeCommands(
+      command.center,
+      command.radius,
+      command.style.strokeWidth,
+      command.style.color ?? DEFAULT_COLOR,
+    )
+  }
+
+  if (command.kind === 'fill-polygon') {
+    if (command.points.length < 3) {
+      return null
+    }
+
+    if (!command.points.every(point => isNormalizedPoint(point))) {
+      return null
+    }
+
+    if (!isFiniteNumber(command.style.strokeWidth) || command.style.strokeWidth <= 0) {
+      return null
+    }
+
+    return toFillPolygonStrokeCommands(
+      command.points,
+      command.style.strokeWidth,
+      command.style.color ?? DEFAULT_COLOR,
+    )
   }
 
   if (command.points.length < 2) {
@@ -457,23 +679,25 @@ const toStrokeCommand = (command: MagicCrayonCommandV1): StrokeCommand | null =>
     return null
   }
 
-  return {
-    mode: command.kind === 'draw-path' ? 'draw' : 'erase',
-    strokeStyle:
-      command.kind === 'draw-path'
-        ? (command.style.color ?? DEFAULT_COLOR)
-        : DEFAULT_COLOR,
-    lineCap: command.style.lineCap ?? 'round',
-    lineJoin: command.style.lineJoin ?? 'round',
-    lineWidth: command.style.strokeWidth,
-    compositing: command.kind === 'draw-path' ? Composites.DRAW : Composites.ERASE,
-    sourceWidth: SOURCE_SPACE_SIZE,
-    sourceHeight: SOURCE_SPACE_SIZE,
-    points: command.points.map(point => ({
-      x: point.x,
-      y: point.y,
-    })),
-  }
+  return [
+    {
+      mode: command.kind === 'draw-path' ? 'draw' : 'erase',
+      strokeStyle:
+        command.kind === 'draw-path'
+          ? (command.style.color ?? DEFAULT_COLOR)
+          : DEFAULT_COLOR,
+      lineCap: command.style.lineCap ?? 'round',
+      lineJoin: command.style.lineJoin ?? 'round',
+      lineWidth: command.style.strokeWidth,
+      compositing: command.kind === 'draw-path' ? Composites.DRAW : Composites.ERASE,
+      sourceWidth: SOURCE_SPACE_SIZE,
+      sourceHeight: SOURCE_SPACE_SIZE,
+      points: command.points.map(point => ({
+        x: point.x,
+        y: point.y,
+      })),
+    },
+  ]
 }
 
 const appendStroke = (runtime: CommandRuntimeAdapterV1, stroke: StrokeCommand): void => {
@@ -491,6 +715,28 @@ const appendStroke = (runtime: CommandRuntimeAdapterV1, stroke: StrokeCommand): 
   })
 }
 
+const appendStrokes = (
+  runtime: CommandRuntimeAdapterV1,
+  strokes: StrokeCommand[],
+): void => {
+  if (strokes.length === 0) {
+    return
+  }
+
+  if (strokes.length === 1) {
+    appendStroke(runtime, strokes[0])
+
+    return
+  }
+
+  const current = runtime.getDocument()
+
+  runtime.setDocument({
+    version: 1,
+    strokes: [...current.strokes, ...strokes],
+  })
+}
+
 const canUndo = (runtime: CommandRuntimeAdapterV1): boolean => runtime.getUndoSize() > 0
 const canRedo = (runtime: CommandRuntimeAdapterV1): boolean => runtime.getRedoSize() > 0
 
@@ -500,24 +746,28 @@ const executeCommandV1 = (
 ): CommandExecutionResultV1 => {
   if (
     command.kind === 'draw-path' ||
+    command.kind === 'draw-line' ||
     command.kind === 'erase-path' ||
     command.kind === 'draw-circle' ||
     command.kind === 'draw-rect' ||
     command.kind === 'draw-bezier' ||
     command.kind === 'draw-ellipse' ||
     command.kind === 'draw-polygon' ||
-    command.kind === 'draw-arc'
+    command.kind === 'draw-arc' ||
+    command.kind === 'fill-rect' ||
+    command.kind === 'fill-circle' ||
+    command.kind === 'fill-polygon'
   ) {
-    const stroke = toStrokeCommand(command)
+    const strokes = toStrokeCommands(command)
 
-    if (!stroke) {
+    if (!strokes || strokes.length === 0) {
       return toRejected(
         command,
         'Draw and erase commands require valid normalized geometry and a positive strokeWidth.',
       )
     }
 
-    appendStroke(runtime, stroke)
+    appendStrokes(runtime, strokes)
     return toApplied(command)
   }
 

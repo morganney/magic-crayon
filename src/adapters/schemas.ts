@@ -22,6 +22,13 @@ const drawPathCommandSchema = z.object({
   style: styleSchema,
 })
 
+const drawLineCommandSchema = z.object({
+  kind: z.literal('draw-line'),
+  start: pointSchema,
+  end: pointSchema,
+  style: styleSchema,
+})
+
 const erasePathCommandSchema = z.object({
   kind: z.literal('erase-path'),
   points: z.array(pointSchema).min(2),
@@ -80,6 +87,30 @@ const drawArcCommandSchema = z.object({
   counterclockwise: z.boolean().optional(),
   style: styleSchema,
   segments: z.number().int().min(8).max(128).optional(),
+})
+
+const fillRectCommandSchema = z.object({
+  kind: z.literal('fill-rect'),
+  rect: z.object({
+    x: normalizedValueSchema,
+    y: normalizedValueSchema,
+    width: z.number().finite().positive().max(100),
+    height: z.number().finite().positive().max(100),
+  }),
+  style: styleSchema,
+})
+
+const fillCircleCommandSchema = z.object({
+  kind: z.literal('fill-circle'),
+  center: pointSchema,
+  radius: z.number().finite().positive().max(100),
+  style: styleSchema,
+})
+
+const fillPolygonCommandSchema = z.object({
+  kind: z.literal('fill-polygon'),
+  points: z.array(pointSchema).min(3),
+  style: styleSchema,
 })
 
 const eraseRectCommandSchema = z.object({
@@ -160,6 +191,7 @@ const redoCommandSchema = z.object({
 
 const commandSchema = z.discriminatedUnion('kind', [
   drawPathCommandSchema,
+  drawLineCommandSchema,
   erasePathCommandSchema,
   drawCircleCommandSchema,
   drawRectCommandSchema,
@@ -167,6 +199,9 @@ const commandSchema = z.discriminatedUnion('kind', [
   drawEllipseCommandSchema,
   drawPolygonCommandSchema,
   drawArcCommandSchema,
+  fillRectCommandSchema,
+  fillCircleCommandSchema,
+  fillPolygonCommandSchema,
   eraseRectCommandSchema,
   replaceDocumentCommandSchema,
   clearCommandSchema,
@@ -189,9 +224,13 @@ export {
   drawBezierCommandSchema,
   drawCircleCommandSchema,
   drawEllipseCommandSchema,
+  drawLineCommandSchema,
   drawPathCommandSchema,
   drawPolygonCommandSchema,
   drawRectCommandSchema,
+  fillCircleCommandSchema,
+  fillPolygonCommandSchema,
+  fillRectCommandSchema,
   erasePathCommandSchema,
   eraseRectCommandSchema,
   replaceDocumentCommandSchema,

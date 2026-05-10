@@ -256,6 +256,28 @@ describe('copilotKitAdapter', () => {
     ])
   })
 
+  it('maps draw-line action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.draw-line',
+      args: {
+        start: { x: 10, y: 20 },
+        end: { x: 90, y: 80 },
+        style: {
+          strokeWidth: 3,
+          color: '#3366cc',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('draw-line')
+  })
+
   it('maps draw-rect action payloads with canonical fields', () => {
     const result = copilotKitAdapter.parse({
       actionName: 'magic-crayon.draw-rect',
@@ -444,5 +466,73 @@ describe('copilotKitAdapter', () => {
         segments: 12,
       },
     ])
+  })
+
+  it('maps fill-rect action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.fill-rect',
+      args: {
+        rect: { x: 20, y: 20, width: 30, height: 20 },
+        style: {
+          strokeWidth: 4,
+          color: '#44aa44',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('fill-rect')
+  })
+
+  it('maps fill-circle action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.fill-circle',
+      args: {
+        center: { x: 50, y: 50 },
+        radius: 15,
+        style: {
+          strokeWidth: 3,
+          color: '#aa4444',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('fill-circle')
+  })
+
+  it('maps fill-polygon action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.fill-polygon',
+      args: {
+        points: [
+          { x: 20, y: 20 },
+          { x: 40, y: 20 },
+          { x: 30, y: 42 },
+        ],
+        style: {
+          strokeWidth: 3,
+          color: '#4488cc',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('fill-polygon')
   })
 })

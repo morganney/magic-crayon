@@ -8,9 +8,13 @@ import {
   drawBezierToolSchema,
   drawCircleToolSchema,
   drawEllipseToolSchema,
+  drawLineToolSchema,
   drawPathToolSchema,
   drawPolygonToolSchema,
   drawRectToolSchema,
+  fillCircleToolSchema,
+  fillPolygonToolSchema,
+  fillRectToolSchema,
   erasePathToolSchema,
   eraseRectToolSchema,
   noPayloadToolSchema,
@@ -49,6 +53,30 @@ const toolRegistry: Record<string, ToolSpec> = {
         {
           kind: 'draw-path',
           points: data.points,
+          style: data.style,
+        },
+      ]
+    },
+  },
+  'draw-line': {
+    schema: drawLineToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const data = input as {
+        start: { x: number; y: number }
+        end: { x: number; y: number }
+        style: {
+          strokeWidth: number
+          lineCap?: CanvasLineCap
+          lineJoin?: CanvasLineJoin
+          color?: string
+        }
+      }
+
+      return [
+        {
+          kind: 'draw-line',
+          start: data.start,
+          end: data.end,
           style: data.style,
         },
       ]
@@ -286,6 +314,73 @@ const toolRegistry: Record<string, ToolSpec> = {
           counterclockwise: data.counterclockwise,
           style: data.style,
           segments: data.segments,
+        },
+      ]
+    },
+  },
+  'fill-rect': {
+    schema: fillRectToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const data = input as {
+        rect: {
+          x: number
+          y: number
+          width: number
+          height: number
+        }
+        style: {
+          strokeWidth: number
+          color?: string
+        }
+      }
+
+      return [
+        {
+          kind: 'fill-rect',
+          rect: data.rect,
+          style: data.style,
+        },
+      ]
+    },
+  },
+  'fill-circle': {
+    schema: fillCircleToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const data = input as {
+        center: { x: number; y: number }
+        radius: number
+        style: {
+          strokeWidth: number
+          color?: string
+        }
+      }
+
+      return [
+        {
+          kind: 'fill-circle',
+          center: data.center,
+          radius: data.radius,
+          style: data.style,
+        },
+      ]
+    },
+  },
+  'fill-polygon': {
+    schema: fillPolygonToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const data = input as {
+        points: Array<{ x: number; y: number }>
+        style: {
+          strokeWidth: number
+          color?: string
+        }
+      }
+
+      return [
+        {
+          kind: 'fill-polygon',
+          points: data.points,
+          style: data.style,
         },
       ]
     },

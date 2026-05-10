@@ -150,6 +150,28 @@ describe('command runtime helpers', () => {
     expect(state.document.strokes[0]?.mode).toBe('draw')
   })
 
+  it('applies draw-line and records a two-point stroke', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-line',
+      start: { x: 10, y: 20 },
+      end: { x: 90, y: 80 },
+      style: {
+        strokeWidth: 3,
+        color: '#3366cc',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes[0]?.points).toEqual([
+      { x: 10, y: 20 },
+      { x: 90, y: 80 },
+    ])
+  })
+
   it('applies draw-rect and records a closed outline stroke', () => {
     const { runtime } = setupContextRuntime()
 
@@ -282,6 +304,68 @@ describe('command runtime helpers', () => {
     expect(points[0]?.y).toBeCloseTo(50)
     expect(points[points.length - 1]?.x).toBeCloseTo(30)
     expect(points[points.length - 1]?.y).toBeCloseTo(50)
+  })
+
+  it('applies fill-rect by emitting multiple horizontal fill strokes', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-rect',
+      rect: { x: 20, y: 20, width: 30, height: 20 },
+      style: {
+        strokeWidth: 4,
+        color: '#44aa44',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes.length).toBeGreaterThan(2)
+    expect(state.document.strokes[0]?.points[0]?.x).toBeCloseTo(20)
+    expect(state.document.strokes[0]?.points[1]?.x).toBeCloseTo(50)
+  })
+
+  it('applies fill-circle by emitting scanline-based fill strokes', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-circle',
+      center: { x: 50, y: 50 },
+      radius: 15,
+      style: {
+        strokeWidth: 3,
+        color: '#aa4444',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes.length).toBeGreaterThan(4)
+  })
+
+  it('applies fill-polygon by emitting interior scanline strokes', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-polygon',
+      points: [
+        { x: 20, y: 20 },
+        { x: 50, y: 20 },
+        { x: 65, y: 45 },
+        { x: 35, y: 60 },
+      ],
+      style: {
+        strokeWidth: 3,
+        color: '#4488cc',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes.length).toBeGreaterThan(4)
   })
 
   it('handles undo and redo with noop safeguards', () => {

@@ -264,6 +264,38 @@ describe('aiSdkAdapter', () => {
     ])
   })
 
+  it('maps draw-line tool payloads', () => {
+    const result = aiSdkAdapter.parse({
+      toolName: 'magic-crayon.draw-line',
+      input: {
+        start: { x: 10, y: 20 },
+        end: { x: 90, y: 80 },
+        style: {
+          strokeWidth: 3,
+          color: '#3366cc',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands).toEqual([
+      {
+        kind: 'draw-line',
+        start: { x: 10, y: 20 },
+        end: { x: 90, y: 80 },
+        style: {
+          strokeWidth: 3,
+          color: '#3366cc',
+        },
+      },
+    ])
+  })
+
   it('maps draw-rect tool payloads with canonical fields', () => {
     const result = aiSdkAdapter.parse({
       toolName: 'magic-crayon.draw-rect',
@@ -452,6 +484,74 @@ describe('aiSdkAdapter', () => {
         segments: 12,
       },
     ])
+  })
+
+  it('maps fill-rect tool payloads', () => {
+    const result = aiSdkAdapter.parse({
+      toolName: 'magic-crayon.fill-rect',
+      input: {
+        rect: { x: 20, y: 20, width: 30, height: 20 },
+        style: {
+          strokeWidth: 4,
+          color: '#44aa44',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('fill-rect')
+  })
+
+  it('maps fill-circle tool payloads', () => {
+    const result = aiSdkAdapter.parse({
+      toolName: 'magic-crayon.fill-circle',
+      input: {
+        center: { x: 50, y: 50 },
+        radius: 15,
+        style: {
+          strokeWidth: 3,
+          color: '#aa4444',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('fill-circle')
+  })
+
+  it('maps fill-polygon tool payloads', () => {
+    const result = aiSdkAdapter.parse({
+      toolName: 'magic-crayon.fill-polygon',
+      input: {
+        points: [
+          { x: 20, y: 20 },
+          { x: 40, y: 20 },
+          { x: 30, y: 42 },
+        ],
+        style: {
+          strokeWidth: 3,
+          color: '#4488cc',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('fill-polygon')
   })
 
   it('maps erase-rect percent payloads', () => {
