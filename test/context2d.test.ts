@@ -22,6 +22,24 @@ const setup = () => {
   return { canvas, drawing }
 }
 
+const setupWithOptions = (options: ConstructorParameters<typeof Context2D>[1]) => {
+  const canvas = document.createElement('canvas')
+
+  canvas.width = 200
+  canvas.height = 100
+  canvas.style.width = '200px'
+  canvas.style.height = '100px'
+  document.body.append(canvas)
+
+  const context = canvas.getContext('2d') as CanvasRenderingContext2D
+  const drawing = new Context2D(context, {
+    serialization: Serializations.BLOB,
+    ...options,
+  })
+
+  return { canvas, drawing }
+}
+
 describe('Context2D', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
@@ -108,6 +126,40 @@ describe('Context2D', () => {
     drawing.unregisterListeners(onUndo, onRedo)
   })
 
+  it('supports bounding replay command history with commandLimit', () => {
+    const { drawing } = setupWithOptions({ commandLimit: 5 })
+
+    for (let index = 0; index < 9; index += 1) {
+      const x = 10 + index * 6
+
+      drawing.startDrawing(new DOMPoint(x, 20))
+      drawing.draw(new DOMPoint(x + 4, 26))
+      drawing.stopDrawing()
+    }
+
+    expect(drawing.getDocument().strokes).toHaveLength(5)
+    expect(drawing.undoStackSize).toBe(5)
+
+    for (let index = 0; index < 5; index += 1) {
+      drawing.applyUndo()
+    }
+
+    expect(drawing.getDocument().strokes).toHaveLength(0)
+    expect(drawing.undoStackSize).toBe(0)
+  })
+
+  it('throws when commandLimit is less than undo depth', () => {
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d') as CanvasRenderingContext2D
+
+    expect(() => {
+      new Context2D(context, {
+        serialization: Serializations.BLOB,
+        commandLimit: 4,
+      })
+    }).toThrow('commandLimit must be an integer >= 5')
+  })
+
   it('does not draw when not in drawing mode', () => {
     const { drawing } = setup()
 
@@ -130,6 +182,82 @@ describe('Context2D', () => {
     expect(typeof asUrl).toBe('string')
     expect((asUrl as string).startsWith('data:image/')).toBe(true)
     expect(asBlob instanceof Blob).toBe(true)
+  })
+
+  it('preserves imported bitmap across rescale replay', async () => {
+    const { drawing, canvas } = setup()
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      throw new Error('2d context is required for test')
+    }
+
+    const source = document.createElement('canvas')
+
+    source.width = 20
+    source.height = 20
+
+    const sourceContext = source.getContext('2d')
+
+    if (!sourceContext) {
+      throw new Error('2d source context is required for test')
+    }
+
+    sourceContext.fillStyle = '#00ff00'
+    sourceContext.fillRect(0, 0, source.width, source.height)
+
+    await drawing.setData(source.toDataURL())
+
+    const alphaBefore = context.getImageData(100, 50, 1, 1).data[3]
+
+    Object.defineProperty(canvas, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => new DOMRect(0, 0, 200, 100),
+    })
+
+    drawing.rescale()
+
+    const alphaAfter = context.getImageData(100, 50, 1, 1).data[3]
+
+    expect(alphaBefore).toBeGreaterThan(0)
+    expect(alphaAfter).toBeGreaterThan(0)
+  })
+
+  it('keeps imported bitmap when undo replays command history', async () => {
+    const { drawing, canvas } = setup()
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      throw new Error('2d context is required for test')
+    }
+
+    const source = document.createElement('canvas')
+
+    source.width = 20
+    source.height = 20
+
+    const sourceContext = source.getContext('2d')
+
+    if (!sourceContext) {
+      throw new Error('2d source context is required for test')
+    }
+
+    sourceContext.fillStyle = '#00ff00'
+    sourceContext.fillRect(0, 0, source.width, source.height)
+
+    await drawing.setData(source.toDataURL())
+
+    drawing.strokeStyle = '#000000'
+    drawing.lineWidth = 12
+    drawing.startDrawing(new DOMPoint(20, 20))
+    drawing.draw(new DOMPoint(180, 80))
+    drawing.stopDrawing()
+
+    drawing.applyUndo()
+
+    const alphaAfterUndo = context.getImageData(100, 50, 1, 1).data[3]
+
+    expect(alphaAfterUndo).toBeGreaterThan(0)
   })
 
   it('rescales and provides canvas rect', () => {

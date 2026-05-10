@@ -34,6 +34,7 @@ type ContextState = Partial<{
   lineJoin: CanvasLineJoin
   lineWidth: number
   compositing: GlobalCompositeOperation
+  commandLimit: number
   serialization: Serializations
   backgroundColor: string
 }>
@@ -49,13 +50,15 @@ class Context2D {
   protected isDrawing: boolean = false
   protected viewWidth: number = Dimensions.WIDTH
   protected viewHeight: number = Dimensions.HEIGHT
-  protected history = new Context2DHistory()
+  protected history: Context2DHistory
   protected scaleFactor: number = Math.ceil(Math.max(2, devicePixelRatio))
   protected serialization: Serializations = Serializations.BLOB
   protected backgroundColor: string = '#ffffff'
   protected activeStroke: StrokeCommand | null = null
+  protected baseLayer: HTMLCanvasElement | null = null
 
   constructor(context: CanvasRenderingContext2D, options?: ContextState) {
+    this.history = new Context2DHistory(options?.commandLimit)
     this.raster = context
     this.resetState(this.raster, options)
     this.raster.imageSmoothingEnabled = false
@@ -255,9 +258,31 @@ class Context2D {
   protected replayCommands(): void {
     this.clearRect()
 
+    if (this.baseLayer) {
+      this.drawImage(this.baseLayer)
+    }
+
     for (const command of this.history.getCommands()) {
       this.drawCommand(command)
     }
+  }
+
+  protected snapshotBaseLayer(): void {
+    const snapshot = document.createElement('canvas')
+
+    snapshot.width = this.raster.canvas.width
+    snapshot.height = this.raster.canvas.height
+
+    const context = snapshot.getContext('2d')
+
+    if (!context) {
+      this.baseLayer = null
+
+      return
+    }
+
+    context.drawImage(this.raster.canvas, 0, 0)
+    this.baseLayer = snapshot
   }
 
   protected drawCommand(command: StrokeCommand): void {
@@ -297,6 +322,7 @@ class Context2D {
 
       img.onload = () => {
         this.drawImage(img)
+        this.snapshotBaseLayer()
         this.history.clear()
         resolve()
       }
@@ -429,6 +455,7 @@ class Context2D {
 
   clear(): void {
     this.clearRect()
+    this.baseLayer = null
     this.history.clear()
     this.activeStroke = null
     this.isDrawing = false
@@ -447,6 +474,7 @@ class Context2D {
   }
 
   setDocument(document: DrawingDocumentV1): void {
+    this.baseLayer = null
     this.history.setDocument(document)
     this.replayCommands()
   }

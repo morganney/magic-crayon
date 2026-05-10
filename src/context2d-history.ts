@@ -9,9 +9,30 @@ type CustomNumberEventListener = (evt: CustomEvent<number>) => void
 const UNDO_LIMIT = 5
 
 class Context2DHistory {
+  protected readonly commandLimit: number
   protected readonly undo = new FixedStack<StrokeCommand>(UNDO_LIMIT)
   protected readonly redo = new FixedStack<StrokeCommand>(UNDO_LIMIT)
   protected commands: StrokeCommand[] = []
+
+  constructor(commandLimit: number = Number.POSITIVE_INFINITY) {
+    if (Number.isFinite(commandLimit)) {
+      if (!Number.isInteger(commandLimit) || commandLimit < UNDO_LIMIT) {
+        throw new Error(
+          `Context2DHistory commandLimit must be an integer >= ${UNDO_LIMIT}.`,
+        )
+      }
+    }
+
+    this.commandLimit = commandLimit
+  }
+
+  protected limitCommands(commands: StrokeCommand[]): StrokeCommand[] {
+    if (!Number.isFinite(this.commandLimit) || commands.length <= this.commandLimit) {
+      return commands
+    }
+
+    return commands.slice(commands.length - this.commandLimit)
+  }
 
   get undoSize(): number {
     return this.undo.size
@@ -23,6 +44,7 @@ class Context2DHistory {
 
   add(command: StrokeCommand): void {
     this.commands.push(cloneCommand(command))
+    this.commands = this.limitCommands(this.commands)
 
     this.undo.push(cloneCommand(command))
   }
@@ -69,11 +91,11 @@ class Context2DHistory {
   setDocument(document: DrawingDocumentV1): void {
     const nextStrokes = document.strokes.map(stroke => cloneCommand(stroke))
 
-    this.commands = nextStrokes
+    this.commands = this.limitCommands(nextStrokes)
     this.undo.clear()
     this.redo.clear()
 
-    for (const stroke of nextStrokes) {
+    for (const stroke of this.commands) {
       this.undo.push(cloneCommand(stroke))
     }
   }
