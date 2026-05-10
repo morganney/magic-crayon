@@ -8,6 +8,12 @@ import undoSvg from '../assets/undo.svg?raw'
 import templateHtml from './template.html?raw'
 import stylesCss from './styles.css?raw'
 import {
+  createContext2DCommandRuntime,
+  executeCommandBatchV1,
+  executeCommandV1,
+  getCommandApiStateV1,
+} from './command-runtime.js'
+import {
   assertAnchor,
   assertBoundary,
   assertCanvasBackground,
@@ -47,6 +53,11 @@ import type {
   WidthControls,
   WidthChangeDetail,
 } from './types.js'
+import type {
+  CommandApiStateV1,
+  CommandExecutionResultV1,
+  MagicCrayonCommandV1,
+} from './command-api.js'
 
 const DEFAULT_SERIALIZATION: Serialization = 'blob'
 const DEFAULT_COLOR_PICKER: ColorPicker = 'crayon'
@@ -682,6 +693,27 @@ class MagicCrayon extends HTMLElement {
   clearDrawingData(): void {
     this.drawingValue = null
     this.requireContext2D().clear()
+  }
+
+  applyCommand(command: MagicCrayonCommandV1): CommandExecutionResultV1 {
+    const runtime = createContext2DCommandRuntime(this.requireContext2D())
+
+    return executeCommandV1(runtime, command)
+  }
+
+  applyCommands(commands: MagicCrayonCommandV1[]): {
+    version: 1
+    results: CommandExecutionResultV1[]
+  } {
+    const runtime = createContext2DCommandRuntime(this.requireContext2D())
+
+    return executeCommandBatchV1(runtime, commands)
+  }
+
+  getCommandState(): CommandApiStateV1 {
+    const runtime = createContext2DCommandRuntime(this.requireContext2D())
+
+    return getCommandApiStateV1(runtime)
   }
 
   protected queryNode<T extends Element>(selector: string): T {

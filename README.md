@@ -145,6 +145,9 @@ if (!customElements.get(TAG_NAME)) {
 - `getDrawingData(serialization?: 'blob' | 'dataurl'): Promise<Blob | string>`
 - `setDrawingData(data: Blob | string): Promise<void>`
 - `clearDrawingData(): void`
+- `applyCommand(command: MagicCrayonCommandV1): { version, status, command, reason? }`
+- `applyCommands(commands: MagicCrayonCommandV1[]): { version, results }`
+- `getCommandState(): { version, undoSize, redoSize, document }`
 
 ## Events
 

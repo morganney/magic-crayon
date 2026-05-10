@@ -739,6 +739,33 @@ describe('magic-crayon', () => {
     node.clearDrawingData()
   })
 
+  it('applies command API through public methods without touching internals', () => {
+    const node = createMagicCrayon()
+
+    const applied = node.applyCommand({
+      kind: 'draw-path',
+      points: [
+        { x: 12, y: 12 },
+        { x: 48, y: 30 },
+      ],
+      style: {
+        strokeWidth: 3,
+        color: '#0055aa',
+      },
+    })
+
+    expect(applied.status).toBe('applied')
+
+    const state = node.getCommandState()
+
+    expect(state.document.strokes).toHaveLength(1)
+    expect(state.undoSize).toBe(1)
+
+    const batch = node.applyCommands([{ kind: 'undo' }, { kind: 'redo' }])
+
+    expect(batch.results.map(result => result.status)).toEqual(['applied', 'applied'])
+  })
+
   it('keeps clear durable across disconnect and reconnect', async () => {
     const node = createMagicCrayon()
 
