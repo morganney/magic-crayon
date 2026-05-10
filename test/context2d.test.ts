@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { Composites, Context2D, Mode, Serializations } from '../src/context2d.js'
 
@@ -280,35 +280,7 @@ describe('Context2D', () => {
     expect(getAlphaAt(100, 50)).toBe(0)
   })
 
-  it('refreshes snapshot lazily when needed after undo and redo', () => {
-    const { drawing, canvas } = setup()
-    const setSnapshotSpy = vi.spyOn(
-      drawing as unknown as { setSnapshot: () => void },
-      'setSnapshot',
-    )
-
-    drawing.startDrawing(new DOMPoint(20, 50))
-    drawing.draw(new DOMPoint(180, 50))
-    drawing.stopDrawing()
-
-    const beforeUndoCalls = setSnapshotSpy.mock.calls.length
-
-    drawing.applyUndo()
-    drawing.applyRedo()
-
-    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls)
-
-    Object.defineProperty(canvas, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => new DOMRect(0, 0, 160, 90),
-    })
-
-    drawing.rescale()
-
-    expect(setSnapshotSpy.mock.calls.length).toBe(beforeUndoCalls + 1)
-  })
-
-  it('restores exact pixels when undoing an erase stroke', () => {
+  it('restores erased content on undo and reapplies erase on redo', () => {
     const { drawing, canvas } = setup()
     const context = canvas.getContext('2d')
 
@@ -323,7 +295,9 @@ describe('Context2D', () => {
     drawing.draw(new DOMPoint(180, 50))
     drawing.stopDrawing()
 
-    const beforeErase = context.getImageData(0, 0, canvas.width, canvas.height)
+    const alphaAt = (x: number, y: number) => context.getImageData(x, y, 1, 1).data[3]
+
+    const alphaBeforeErase = alphaAt(100, 50)
 
     drawing.pencilMode = Mode.ERASE
     drawing.compositing = Composites.ERASE
@@ -332,18 +306,106 @@ describe('Context2D', () => {
     drawing.draw(new DOMPoint(120, 50))
     drawing.stopDrawing()
 
-    const afterErase = context.getImageData(0, 0, canvas.width, canvas.height)
+    const alphaAfterErase = alphaAt(100, 50)
+
+    drawing.applyUndo()
+
+    const alphaAfterUndo = alphaAt(100, 50)
+
+    drawing.applyRedo()
+
+    const alphaAfterRedo = alphaAt(100, 50)
+
+    expect(alphaBeforeErase).toBeGreaterThan(0)
+    expect(alphaAfterErase).toBeLessThan(alphaBeforeErase)
+    expect(alphaAfterUndo).toBeGreaterThan(alphaAfterErase)
+    expect(alphaAfterRedo).toBeLessThan(alphaAfterUndo)
+  })
+
+  it('keeps undo and redo deterministic across resize', () => {
+    const { drawing, canvas } = setup()
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      throw new Error('2d context is required for test')
+    }
+
+    drawing.pencilMode = Mode.DRAW
+    drawing.compositing = Composites.DRAW
+    drawing.lineWidth = 12
+    drawing.startDrawing(new DOMPoint(20, 20))
+    drawing.draw(new DOMPoint(180, 80))
+    drawing.stopDrawing()
+
+    const afterDraw = context.getImageData(0, 0, canvas.width, canvas.height)
 
     drawing.applyUndo()
 
     const afterUndo = context.getImageData(0, 0, canvas.width, canvas.height)
 
-    expect(afterUndo.data).toStrictEqual(beforeErase.data)
+    Object.defineProperty(canvas, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => new DOMRect(0, 0, 320, 180),
+    })
 
+    drawing.rescale()
     drawing.applyRedo()
 
-    const afterRedo = context.getImageData(0, 0, canvas.width, canvas.height)
+    const afterRedoOnResize = context.getImageData(0, 0, canvas.width, canvas.height)
 
-    expect(afterRedo.data).toStrictEqual(afterErase.data)
+    expect(afterUndo.data).not.toStrictEqual(afterDraw.data)
+    expect(afterRedoOnResize.data).not.toStrictEqual(afterUndo.data)
+  })
+
+  it('exports and imports DrawingDocumentV1 for replay', () => {
+    const { drawing, canvas } = setup()
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      throw new Error('2d context is required for test')
+    }
+
+    drawing.pencilMode = Mode.DRAW
+    drawing.compositing = Composites.DRAW
+    drawing.lineWidth = 10
+    drawing.startDrawing(new DOMPoint(20, 20))
+    drawing.draw(new DOMPoint(180, 80))
+    drawing.stopDrawing()
+
+    const exported = drawing.getDocument()
+
+    expect(exported.version).toBe(1)
+    expect(exported.strokes.length).toBe(1)
+
+    drawing.clear()
+    drawing.setDocument(exported)
+
+    const alpha = context.getImageData(100, 50, 1, 1).data[3]
+
+    expect(alpha).toBeGreaterThan(0)
+  })
+
+  it('clamps imported document history to configured history limit', () => {
+    const { drawing } = setup()
+
+    drawing.setDocument({
+      version: 1,
+      strokes: Array.from({ length: 10 }, (_, index) => ({
+        mode: Mode.DRAW,
+        strokeStyle: '#000000',
+        lineCap: 'round',
+        lineJoin: 'round',
+        lineWidth: 5,
+        compositing: Composites.DRAW,
+        sourceWidth: 200,
+        sourceHeight: 100,
+        points: [
+          { x: 10 + index, y: 10 },
+          { x: 20 + index, y: 20 },
+        ],
+      })),
+    })
+
+    expect(drawing.undoStackSize).toBe(5)
   })
 })

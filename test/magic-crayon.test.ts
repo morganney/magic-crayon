@@ -669,6 +669,25 @@ describe('magic-crayon', () => {
     node.clearDrawingData()
   })
 
+  it('keeps clear durable across disconnect and reconnect', async () => {
+    const node = createMagicCrayon()
+
+    await node.setDrawingData(ONE_PIXEL_PNG)
+    expect(node.drawing).toBe(ONE_PIXEL_PNG)
+
+    node.clearDrawingData()
+    expect(node.drawing).toBeNull()
+
+    node.remove()
+    document.body.append(node)
+
+    const data = await node.getDrawingData('dataurl')
+
+    expect(typeof data).toBe('string')
+    expect((data as string).startsWith('data:image/')).toBe(true)
+    expect(data).not.toBe(ONE_PIXEL_PNG)
+  })
+
   it('applies preset selected/boundary/width-control and width attributes on connect', () => {
     const node = document.createElement('magic-crayon') as MagicCrayon
 

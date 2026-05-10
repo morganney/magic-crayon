@@ -644,6 +644,7 @@ class MagicCrayon extends HTMLElement {
   }
 
   clearDrawingData(): void {
+    this.drawingValue = null
     this.requireContext2D().clear()
   }
 

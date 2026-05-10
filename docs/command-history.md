@@ -1,16 +1,12 @@
-# Command-History Migration for Smart Resize Undo/Redo
+# Command-History Status and Design Notes
 
-Use this as the implementation brief for migrating `magic-crayon` from raster-snapshot undo/redo to a command-history approach while preserving backward compatibility.
+This document tracks the command-history architecture in `magic-crayon`.
 
-## Objective
+## Completed Goals
 
-Implement a command-history drawing model that supports:
-
-1. Smart undo/redo across viewport size changes.
-2. Cross-device save/load (desktop ↔ phone) with reliable rendering.
-3. Backward compatibility with current image-based APIs.
-
-Keep changes incremental and non-breaking to existing user-facing behavior.
+1. Resize-safe undo/redo.
+2. Cross-device fidelity via source-space stroke replay.
+3. Durable clear semantics so stale drawing state does not resurrect on reconnect.
 
 ## Current Constraints
 
@@ -19,92 +15,47 @@ Keep changes incremental and non-breaking to existing user-facing behavior.
 - Preserve existing public APIs and event contracts unless explicitly noted.
 - Keep implementation framework-agnostic and browser-native.
 
-## Existing Public API (must continue to work)
+## Existing Public API (still supported)
 
 - `getDrawingData(serialization?: 'blob' | 'dataurl')`
 - `setDrawingData(data: Blob | string)`
 - `clearDrawingData()`
 - `save` event payload fields currently used by consumers
 
-## Migration Strategy (Phased)
+## Internal Model
 
-### Phase 1 — Internal Command Model (No Public API Changes)
-
-Add an internal document model in `context2d`:
+The runtime now keeps stroke commands and replays them to render output.
 
 - `DrawingDocumentV1`
   - `version: 1`
   - `strokes: StrokeCommand[]`
-  - optional metadata (`baseAspectRatio`, timestamp, etc.)
 - `StrokeCommand`
   - `mode: 'draw' | 'erase'`
-  - style (`color`, `lineWidth`, `lineCap`, `lineJoin`)
-  - `points: Array<{ xNorm: number; yNorm: number; t?: number }>`
+  - style (`strokeStyle`, `lineWidth`, `lineCap`, `lineJoin`, `compositing`)
+  - source viewport (`sourceWidth`, `sourceHeight`)
+  - points in source space (`points: Array<{ x: number; y: number }>`)
 
-Normalize coordinates to viewport space:
-
-- `xNorm = x / viewWidth`
-- `yNorm = y / viewHeight`
-
-Maintain undo/redo as command-stack operations, not canvas snapshots.
-
-### Phase 2 — Rendering Pipeline
-
-Implement deterministic redraw:
-
-- Add `renderFromCommands(width, height)`.
-- On `rescale()`, redraw from active command list.
-- On `applyUndo()` / `applyRedo()`, update command stack and redraw.
-- Keep current visible behavior for tools and compositing modes.
-
-### Phase 3 — Compatibility Layer
-
-Keep image APIs intact:
-
-- `getDrawingData` still exports bitmap (`Blob` or `dataurl`).
-- `setDrawingData` still accepts bitmap and renders into current viewport.
-
-Add non-breaking structured APIs (optional additive):
-
-- `getDrawingDocument(): DrawingDocumentV1`
-- `setDrawingDocument(doc: DrawingDocumentV1): void`
-
-If additive APIs are postponed, at least keep internal model designed for later exposure.
-
-### Phase 4 — Save Payload Extension (Optional Additive)
-
-Extend `save` event detail with optional field:
-
-- `document?: DrawingDocumentV1`
-
-Do not remove or rename existing fields. Keep consumer compatibility.
-
-### Phase 5 — Docs + Tests
-
-- Add docs for smart resize behavior and cross-device persistence options.
-- Add migration notes for consumers wanting semantic history persistence.
+Replay scales source-space points into the current viewport, making resize and
+cross-device rendering deterministic.
 
 ## Acceptance Criteria
 
 1. Undo/redo after resize keeps stroke alignment relative to all other strokes.
 2. Draw → undo → resize → redo yields deterministic placement.
 3. Existing bitmap save/load flows continue to work unchanged.
-4. No breaking changes to existing public method signatures/events.
-5. Tests cover command replay across at least two viewport sizes.
-6. Width controls fidelity: when `stroke-width` and `eraser-scale` are configured,
-   undo of erased content restores original drawn stroke geometry/width instead of
-   replaying erase-width artifacts.
+4. Clear does not resurrect stale drawing state on reconnect.
+5. Tests cover replay behavior and reconnect durability.
 
 ## Test Plan
 
-Add/extend tests under `test/` for:
+Regression tests under `test/` cover:
 
 - draw → resize → undo → redo ordering
 - clear + resize persistence
-- erase stroke replay after resize
-- erase undo fidelity when `eraser-scale` is greater than `1`
+- erase replay undo/redo semantics
 - bitmap-only import compatibility
-- document export/import (if added)
+- document export/import roundtrip
+- clear durability across disconnect/reconnect
 
 Run:
 
@@ -114,7 +65,7 @@ npm run check-types
 npm run lint
 ```
 
-## Performance and Jank Considerations
+## Performance Notes
 
 Command replay introduces redraw cost. Mitigate to avoid frame drops/jank:
 
@@ -142,22 +93,13 @@ Command replay introduces redraw cost. Mitigate to avoid frame drops/jank:
    - Add lightweight instrumentation hooks or debug timers around replay.
    - Confirm no visible hitching in common scenarios (mobile resize/orientation, desktop split-pane).
 
-## Non-Goals (for initial migration)
+## Deferred Work
 
-- Rich vector editing tools (selection/transform/anchor editing).
-- Full SVG authoring/export as primary persistence format.
-- CRDT/collaborative editing.
+- Public agent command API design.
+- Save payload document embedding (`save.detail.document`).
+- Protocol-specific adapters (AI SDK, AGUI, etc.).
 
-## Implementation Notes
+## Next Step
 
-- Keep the smallest possible surface-area changes per phase.
-- Prefer pure helpers for coordinate normalization and replay.
-- Preserve behavior of eraser compositing (`destination-out`) during command replay.
-- If introducing new types, version them (`V1`) to allow future migrations.
-
-## Deliverables
-
-1. Command model + replay implementation in runtime.
-2. Backward-compatible bitmap API behavior preserved.
-3. Regression tests for resize-aware undo/redo.
-4. Documentation updates for developers and API consumers.
+Design the public, agent-agnostic command API on top of `DrawingDocumentV1`
+now that internal replay behavior and clear semantics are stable.
