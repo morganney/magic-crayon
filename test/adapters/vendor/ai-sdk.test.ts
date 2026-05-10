@@ -264,6 +264,196 @@ describe('aiSdkAdapter', () => {
     ])
   })
 
+  it('maps draw-rect tool payloads with canonical fields', () => {
+    const result = aiSdkAdapter.parse({
+      toolName: 'magic-crayon.draw-rect',
+      input: {
+        rect: {
+          x: 12,
+          y: 18,
+          width: 28,
+          height: 20,
+        },
+        style: {
+          strokeWidth: 3,
+          color: '#7a4a21',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands).toEqual([
+      {
+        kind: 'draw-rect',
+        rect: {
+          x: 12,
+          y: 18,
+          width: 28,
+          height: 20,
+        },
+        style: {
+          strokeWidth: 3,
+          color: '#7a4a21',
+        },
+      },
+    ])
+  })
+
+  it('maps draw-bezier tool payloads', () => {
+    const result = aiSdkAdapter.parse({
+      toolName: 'magic-crayon.draw-bezier',
+      input: {
+        start: { x: 10, y: 80 },
+        control1: { x: 30, y: 20 },
+        control2: { x: 70, y: 20 },
+        end: { x: 90, y: 80 },
+        style: {
+          strokeWidth: 4,
+          color: '#0066cc',
+        },
+        segments: 18,
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands).toEqual([
+      {
+        kind: 'draw-bezier',
+        start: { x: 10, y: 80 },
+        control1: { x: 30, y: 20 },
+        control2: { x: 70, y: 20 },
+        end: { x: 90, y: 80 },
+        style: {
+          strokeWidth: 4,
+          color: '#0066cc',
+        },
+        segments: 18,
+      },
+    ])
+  })
+
+  it('maps draw-ellipse tool payloads', () => {
+    const result = aiSdkAdapter.parse({
+      toolName: 'magic-crayon.draw-ellipse',
+      input: {
+        center: { x: 50, y: 48 },
+        radiusX: 18,
+        radiusY: 11,
+        style: {
+          strokeWidth: 3,
+          color: '#11aa88',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands).toEqual([
+      {
+        kind: 'draw-ellipse',
+        center: { x: 50, y: 48 },
+        radiusX: 18,
+        radiusY: 11,
+        style: {
+          strokeWidth: 3,
+          color: '#11aa88',
+        },
+      },
+    ])
+  })
+
+  it('maps draw-polygon tool payloads', () => {
+    const result = aiSdkAdapter.parse({
+      toolName: 'magic-crayon.draw-polygon',
+      input: {
+        points: [
+          { x: 20, y: 20 },
+          { x: 40, y: 20 },
+          { x: 30, y: 42 },
+        ],
+        closed: true,
+        style: {
+          strokeWidth: 2,
+          color: '#4477cc',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands).toEqual([
+      {
+        kind: 'draw-polygon',
+        points: [
+          { x: 20, y: 20 },
+          { x: 40, y: 20 },
+          { x: 30, y: 42 },
+        ],
+        closed: true,
+        style: {
+          strokeWidth: 2,
+          color: '#4477cc',
+        },
+      },
+    ])
+  })
+
+  it('maps draw-arc tool payloads', () => {
+    const result = aiSdkAdapter.parse({
+      toolName: 'magic-crayon.draw-arc',
+      input: {
+        center: { x: 50, y: 50 },
+        radius: 20,
+        startAngleDegrees: 0,
+        endAngleDegrees: 180,
+        style: {
+          strokeWidth: 3,
+          color: '#ff8800',
+        },
+        segments: 12,
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands).toEqual([
+      {
+        kind: 'draw-arc',
+        center: { x: 50, y: 50 },
+        radius: 20,
+        startAngleDegrees: 0,
+        endAngleDegrees: 180,
+        style: {
+          strokeWidth: 3,
+          color: '#ff8800',
+        },
+        segments: 12,
+      },
+    ])
+  })
+
   it('maps erase-rect percent payloads', () => {
     const result = aiSdkAdapter.parse({
       tool: 'magic-crayon.erase-rect',

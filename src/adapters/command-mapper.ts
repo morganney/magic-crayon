@@ -19,6 +19,11 @@ const toCommandKind = (value: string): MagicCrayonCommandV1['kind'] | null => {
   if (
     normalized === 'draw-path' ||
     normalized === 'draw-circle' ||
+    normalized === 'draw-rect' ||
+    normalized === 'draw-bezier' ||
+    normalized === 'draw-ellipse' ||
+    normalized === 'draw-polygon' ||
+    normalized === 'draw-arc' ||
     normalized === 'erase-path' ||
     normalized === 'erase-rect' ||
     normalized === 'replace-document' ||

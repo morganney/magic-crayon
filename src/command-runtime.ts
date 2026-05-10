@@ -25,6 +25,9 @@ const COMMAND_API_VERSION = 1 as const
 const SOURCE_SPACE_SIZE = 100
 const DEFAULT_COLOR = '#000000'
 const CIRCLE_SEGMENTS = 32
+const DEFAULT_BEZIER_SEGMENTS = 24
+const ELLIPSE_SEGMENTS = 48
+const DEFAULT_ARC_SEGMENTS = 24
 
 const isFiniteNumber = (value: unknown): value is number => {
   return typeof value === 'number' && Number.isFinite(value)
@@ -63,6 +66,126 @@ const isNormalizedRect = (rect: unknown): rect is NormalizedRect => {
   return candidate.x + candidate.width <= 100 && candidate.y + candidate.height <= 100
 }
 
+const toRectOutlinePoints = (rect: NormalizedRect): NormalizedPoint[] => {
+  const right = rect.x + rect.width
+  const bottom = rect.y + rect.height
+
+  return [
+    { x: rect.x, y: rect.y },
+    { x: right, y: rect.y },
+    { x: right, y: bottom },
+    { x: rect.x, y: bottom },
+    { x: rect.x, y: rect.y },
+  ]
+}
+
+const toBezierPoints = (
+  start: NormalizedPoint,
+  control1: NormalizedPoint,
+  control2: NormalizedPoint,
+  end: NormalizedPoint,
+  segments: number,
+): NormalizedPoint[] => {
+  const points: NormalizedPoint[] = []
+
+  for (let index = 0; index <= segments; index += 1) {
+    const t = index / segments
+    const inv = 1 - t
+    const x =
+      inv * inv * inv * start.x +
+      3 * inv * inv * t * control1.x +
+      3 * inv * t * t * control2.x +
+      t * t * t * end.x
+    const y =
+      inv * inv * inv * start.y +
+      3 * inv * inv * t * control1.y +
+      3 * inv * t * t * control2.y +
+      t * t * t * end.y
+
+    points.push({
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    })
+  }
+
+  return points
+}
+
+const toEllipsePoints = (
+  center: NormalizedPoint,
+  radiusX: number,
+  radiusY: number,
+): NormalizedPoint[] => {
+  const points: NormalizedPoint[] = []
+
+  for (let index = 0; index <= ELLIPSE_SEGMENTS; index += 1) {
+    const theta = (index / ELLIPSE_SEGMENTS) * Math.PI * 2
+    const x = center.x + Math.cos(theta) * radiusX
+    const y = center.y + Math.sin(theta) * radiusY
+
+    points.push({
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    })
+  }
+
+  return points
+}
+
+const toPolygonPoints = (
+  points: NormalizedPoint[],
+  closed: boolean,
+): NormalizedPoint[] => {
+  const normalizedPoints = points.map(point => ({
+    x: point.x,
+    y: point.y,
+  }))
+
+  if (closed) {
+    normalizedPoints.push({
+      x: points[0].x,
+      y: points[0].y,
+    })
+  }
+
+  return normalizedPoints
+}
+
+const toArcPoints = (
+  center: NormalizedPoint,
+  radius: number,
+  startAngleDegrees: number,
+  endAngleDegrees: number,
+  counterclockwise: boolean,
+  segments: number,
+): NormalizedPoint[] => {
+  const points: NormalizedPoint[] = []
+  let delta = endAngleDegrees - startAngleDegrees
+
+  if (!counterclockwise && delta < 0) {
+    delta += 360
+  }
+
+  if (counterclockwise && delta > 0) {
+    delta -= 360
+  }
+
+  for (let index = 0; index <= segments; index += 1) {
+    const t = index / segments
+    const angleDegrees = startAngleDegrees + delta * t
+    const theta = (angleDegrees * Math.PI) / 180
+    const x = center.x + Math.cos(theta) * radius
+    const y = center.y + Math.sin(theta) * radius
+
+    points.push({
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    })
+  }
+
+  return points
+}
+
 const toRejected = (
   command: MagicCrayonCommandV1,
   reason: string,
@@ -99,7 +222,12 @@ const toStrokeCommand = (command: MagicCrayonCommandV1): StrokeCommand | null =>
   if (
     command.kind !== 'draw-path' &&
     command.kind !== 'erase-path' &&
-    command.kind !== 'draw-circle'
+    command.kind !== 'draw-circle' &&
+    command.kind !== 'draw-rect' &&
+    command.kind !== 'draw-bezier' &&
+    command.kind !== 'draw-ellipse' &&
+    command.kind !== 'draw-polygon' &&
+    command.kind !== 'draw-arc'
   ) {
     return null
   }
@@ -140,6 +268,180 @@ const toStrokeCommand = (command: MagicCrayonCommandV1): StrokeCommand | null =>
       sourceWidth: SOURCE_SPACE_SIZE,
       sourceHeight: SOURCE_SPACE_SIZE,
       points,
+    }
+  }
+
+  if (command.kind === 'draw-rect') {
+    if (
+      !isNormalizedRect(command.rect) ||
+      command.rect.width <= 0 ||
+      command.rect.height <= 0
+    ) {
+      return null
+    }
+
+    if (!isFiniteNumber(command.style.strokeWidth) || command.style.strokeWidth <= 0) {
+      return null
+    }
+
+    return {
+      mode: 'draw',
+      strokeStyle: command.style.color ?? DEFAULT_COLOR,
+      lineCap: command.style.lineCap ?? 'round',
+      lineJoin: command.style.lineJoin ?? 'round',
+      lineWidth: command.style.strokeWidth,
+      compositing: Composites.DRAW,
+      sourceWidth: SOURCE_SPACE_SIZE,
+      sourceHeight: SOURCE_SPACE_SIZE,
+      points: toRectOutlinePoints(command.rect),
+    }
+  }
+
+  if (command.kind === 'draw-bezier') {
+    if (
+      !isNormalizedPoint(command.start) ||
+      !isNormalizedPoint(command.control1) ||
+      !isNormalizedPoint(command.control2) ||
+      !isNormalizedPoint(command.end)
+    ) {
+      return null
+    }
+
+    if (!isFiniteNumber(command.style.strokeWidth) || command.style.strokeWidth <= 0) {
+      return null
+    }
+
+    const segments = command.segments ?? DEFAULT_BEZIER_SEGMENTS
+
+    if (!Number.isInteger(segments) || segments < 8 || segments > 128) {
+      return null
+    }
+
+    return {
+      mode: 'draw',
+      strokeStyle: command.style.color ?? DEFAULT_COLOR,
+      lineCap: command.style.lineCap ?? 'round',
+      lineJoin: command.style.lineJoin ?? 'round',
+      lineWidth: command.style.strokeWidth,
+      compositing: Composites.DRAW,
+      sourceWidth: SOURCE_SPACE_SIZE,
+      sourceHeight: SOURCE_SPACE_SIZE,
+      points: toBezierPoints(
+        command.start,
+        command.control1,
+        command.control2,
+        command.end,
+        segments,
+      ),
+    }
+  }
+
+  if (command.kind === 'draw-ellipse') {
+    if (!isNormalizedPoint(command.center)) {
+      return null
+    }
+
+    if (
+      !isFiniteNumber(command.radiusX) ||
+      !isFiniteNumber(command.radiusY) ||
+      command.radiusX <= 0 ||
+      command.radiusY <= 0 ||
+      command.radiusX > 100 ||
+      command.radiusY > 100
+    ) {
+      return null
+    }
+
+    if (!isFiniteNumber(command.style.strokeWidth) || command.style.strokeWidth <= 0) {
+      return null
+    }
+
+    return {
+      mode: 'draw',
+      strokeStyle: command.style.color ?? DEFAULT_COLOR,
+      lineCap: command.style.lineCap ?? 'round',
+      lineJoin: command.style.lineJoin ?? 'round',
+      lineWidth: command.style.strokeWidth,
+      compositing: Composites.DRAW,
+      sourceWidth: SOURCE_SPACE_SIZE,
+      sourceHeight: SOURCE_SPACE_SIZE,
+      points: toEllipsePoints(command.center, command.radiusX, command.radiusY),
+    }
+  }
+
+  if (command.kind === 'draw-polygon') {
+    if (command.points.length < 3) {
+      return null
+    }
+
+    if (!command.points.every(point => isNormalizedPoint(point))) {
+      return null
+    }
+
+    if (!isFiniteNumber(command.style.strokeWidth) || command.style.strokeWidth <= 0) {
+      return null
+    }
+
+    return {
+      mode: 'draw',
+      strokeStyle: command.style.color ?? DEFAULT_COLOR,
+      lineCap: command.style.lineCap ?? 'round',
+      lineJoin: command.style.lineJoin ?? 'round',
+      lineWidth: command.style.strokeWidth,
+      compositing: Composites.DRAW,
+      sourceWidth: SOURCE_SPACE_SIZE,
+      sourceHeight: SOURCE_SPACE_SIZE,
+      points: toPolygonPoints(command.points, command.closed !== false),
+    }
+  }
+
+  if (command.kind === 'draw-arc') {
+    if (!isNormalizedPoint(command.center)) {
+      return null
+    }
+
+    if (!isFiniteNumber(command.radius) || command.radius <= 0 || command.radius > 100) {
+      return null
+    }
+
+    if (
+      !isFiniteNumber(command.startAngleDegrees) ||
+      !isFiniteNumber(command.endAngleDegrees)
+    ) {
+      return null
+    }
+
+    if (!isFiniteNumber(command.style.strokeWidth) || command.style.strokeWidth <= 0) {
+      return null
+    }
+
+    const segments = command.segments ?? DEFAULT_ARC_SEGMENTS
+
+    if (!Number.isInteger(segments) || segments < 8 || segments > 128) {
+      return null
+    }
+
+    if (command.startAngleDegrees === command.endAngleDegrees) {
+      return null
+    }
+
+    return {
+      mode: 'draw',
+      strokeStyle: command.style.color ?? DEFAULT_COLOR,
+      lineCap: command.style.lineCap ?? 'round',
+      lineJoin: command.style.lineJoin ?? 'round',
+      lineWidth: command.style.strokeWidth,
+      compositing: Composites.DRAW,
+      sourceWidth: SOURCE_SPACE_SIZE,
+      sourceHeight: SOURCE_SPACE_SIZE,
+      points: toArcPoints(
+        command.center,
+        command.radius,
+        command.startAngleDegrees,
+        command.endAngleDegrees,
+        command.counterclockwise ?? false,
+        segments,
+      ),
     }
   }
 
@@ -199,7 +501,12 @@ const executeCommandV1 = (
   if (
     command.kind === 'draw-path' ||
     command.kind === 'erase-path' ||
-    command.kind === 'draw-circle'
+    command.kind === 'draw-circle' ||
+    command.kind === 'draw-rect' ||
+    command.kind === 'draw-bezier' ||
+    command.kind === 'draw-ellipse' ||
+    command.kind === 'draw-polygon' ||
+    command.kind === 'draw-arc'
   ) {
     const stroke = toStrokeCommand(command)
 

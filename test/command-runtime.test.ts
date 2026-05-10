@@ -150,6 +150,140 @@ describe('command runtime helpers', () => {
     expect(state.document.strokes[0]?.mode).toBe('draw')
   })
 
+  it('applies draw-rect and records a closed outline stroke', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-rect',
+      rect: {
+        x: 20,
+        y: 30,
+        width: 40,
+        height: 20,
+      },
+      style: {
+        strokeWidth: 3,
+        color: '#884422',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes).toHaveLength(1)
+    expect(state.document.strokes[0]?.points).toEqual([
+      { x: 20, y: 30 },
+      { x: 60, y: 30 },
+      { x: 60, y: 50 },
+      { x: 20, y: 50 },
+      { x: 20, y: 30 },
+    ])
+  })
+
+  it('applies draw-bezier and records generated curve points', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-bezier',
+      start: { x: 10, y: 80 },
+      control1: { x: 30, y: 20 },
+      control2: { x: 70, y: 20 },
+      end: { x: 90, y: 80 },
+      style: {
+        strokeWidth: 4,
+        color: '#0066cc',
+      },
+      segments: 16,
+    })
+
+    const state = getCommandApiStateV1(runtime)
+    const points = state.document.strokes[0]?.points ?? []
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes).toHaveLength(1)
+    expect(points).toHaveLength(17)
+    expect(points[0]).toEqual({ x: 10, y: 80 })
+    expect(points[points.length - 1]).toEqual({ x: 90, y: 80 })
+  })
+
+  it('applies draw-ellipse and records sampled ellipse points', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-ellipse',
+      center: { x: 50, y: 50 },
+      radiusX: 20,
+      radiusY: 10,
+      style: {
+        strokeWidth: 3,
+        color: '#22aa88',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+    const points = state.document.strokes[0]?.points ?? []
+
+    expect(result.status).toBe('applied')
+    expect(points.length).toBeGreaterThan(10)
+    expect(points[0]?.x).toBeCloseTo(70)
+    expect(points[0]?.y).toBeCloseTo(50)
+  })
+
+  it('applies draw-polygon and closes by default', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-polygon',
+      points: [
+        { x: 20, y: 20 },
+        { x: 40, y: 20 },
+        { x: 30, y: 40 },
+      ],
+      style: {
+        strokeWidth: 2,
+        color: '#8844cc',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+    const points = state.document.strokes[0]?.points ?? []
+
+    expect(result.status).toBe('applied')
+    expect(points).toEqual([
+      { x: 20, y: 20 },
+      { x: 40, y: 20 },
+      { x: 30, y: 40 },
+      { x: 20, y: 20 },
+    ])
+  })
+
+  it('applies draw-arc and records sampled arc points', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-arc',
+      center: { x: 50, y: 50 },
+      radius: 20,
+      startAngleDegrees: 0,
+      endAngleDegrees: 180,
+      style: {
+        strokeWidth: 3,
+        color: '#ff8800',
+      },
+      segments: 12,
+    })
+
+    const state = getCommandApiStateV1(runtime)
+    const points = state.document.strokes[0]?.points ?? []
+
+    expect(result.status).toBe('applied')
+    expect(points).toHaveLength(13)
+    expect(points[0]?.x).toBeCloseTo(70)
+    expect(points[0]?.y).toBeCloseTo(50)
+    expect(points[points.length - 1]?.x).toBeCloseTo(30)
+    expect(points[points.length - 1]?.y).toBeCloseTo(50)
+  })
+
   it('handles undo and redo with noop safeguards', () => {
     const { runtime } = setupContextRuntime()
     const undoOnEmpty: MagicCrayonCommandV1 = { kind: 'undo' }

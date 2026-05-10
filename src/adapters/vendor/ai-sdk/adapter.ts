@@ -2,14 +2,19 @@ import { asRecord, asString } from '../../command-mapper.js'
 import type { AdapterParseResult, MagicCrayonVendorAdapter } from '../../types.js'
 import type { MagicCrayonCommandV1 } from '../../../command-api.js'
 import {
+  drawArcToolSchema,
   directCommandSchema,
   directCommandsSchema,
+  drawBezierToolSchema,
   drawCircleToolSchema,
+  drawEllipseToolSchema,
   drawPathToolSchema,
+  drawPolygonToolSchema,
+  drawRectToolSchema,
   erasePathToolSchema,
   eraseRectToolSchema,
   noPayloadToolSchema,
-} from './schema.js'
+} from '../schema.js'
 
 type ToolSpec = {
   schema: {
@@ -115,6 +120,172 @@ const toolRegistry: Record<string, ToolSpec> = {
             strokeWidth: raw.strokeWidth,
             color: raw.color,
           },
+        },
+      ]
+    },
+  },
+  'draw-rect': {
+    schema: drawRectToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const raw = input as
+        | {
+            rect: {
+              x: number
+              y: number
+              width: number
+              height: number
+            }
+            style: {
+              strokeWidth: number
+              lineCap?: CanvasLineCap
+              lineJoin?: CanvasLineJoin
+              color?: string
+            }
+          }
+        | {
+            xPercent: number
+            yPercent: number
+            widthPercent: number
+            heightPercent: number
+            color: string
+            strokeWidth: number
+          }
+
+      if ('rect' in raw) {
+        return [
+          {
+            kind: 'draw-rect',
+            rect: raw.rect,
+            style: raw.style,
+          },
+        ]
+      }
+
+      return [
+        {
+          kind: 'draw-rect',
+          rect: {
+            x: raw.xPercent,
+            y: raw.yPercent,
+            width: raw.widthPercent,
+            height: raw.heightPercent,
+          },
+          style: {
+            strokeWidth: raw.strokeWidth,
+            color: raw.color,
+          },
+        },
+      ]
+    },
+  },
+  'draw-bezier': {
+    schema: drawBezierToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const data = input as {
+        start: { x: number; y: number }
+        control1: { x: number; y: number }
+        control2: { x: number; y: number }
+        end: { x: number; y: number }
+        style: {
+          strokeWidth: number
+          lineCap?: CanvasLineCap
+          lineJoin?: CanvasLineJoin
+          color?: string
+        }
+        segments?: number
+      }
+
+      return [
+        {
+          kind: 'draw-bezier',
+          start: data.start,
+          control1: data.control1,
+          control2: data.control2,
+          end: data.end,
+          style: data.style,
+          segments: data.segments,
+        },
+      ]
+    },
+  },
+  'draw-ellipse': {
+    schema: drawEllipseToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const data = input as {
+        center: { x: number; y: number }
+        radiusX: number
+        radiusY: number
+        style: {
+          strokeWidth: number
+          lineCap?: CanvasLineCap
+          lineJoin?: CanvasLineJoin
+          color?: string
+        }
+      }
+
+      return [
+        {
+          kind: 'draw-ellipse',
+          center: data.center,
+          radiusX: data.radiusX,
+          radiusY: data.radiusY,
+          style: data.style,
+        },
+      ]
+    },
+  },
+  'draw-polygon': {
+    schema: drawPolygonToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const data = input as {
+        points: Array<{ x: number; y: number }>
+        closed?: boolean
+        style: {
+          strokeWidth: number
+          lineCap?: CanvasLineCap
+          lineJoin?: CanvasLineJoin
+          color?: string
+        }
+      }
+
+      return [
+        {
+          kind: 'draw-polygon',
+          points: data.points,
+          closed: data.closed,
+          style: data.style,
+        },
+      ]
+    },
+  },
+  'draw-arc': {
+    schema: drawArcToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const data = input as {
+        center: { x: number; y: number }
+        radius: number
+        startAngleDegrees: number
+        endAngleDegrees: number
+        counterclockwise?: boolean
+        style: {
+          strokeWidth: number
+          lineCap?: CanvasLineCap
+          lineJoin?: CanvasLineJoin
+          color?: string
+        }
+        segments?: number
+      }
+
+      return [
+        {
+          kind: 'draw-arc',
+          center: data.center,
+          radius: data.radius,
+          startAngleDegrees: data.startAngleDegrees,
+          endAngleDegrees: data.endAngleDegrees,
+          counterclockwise: data.counterclockwise,
+          style: data.style,
+          segments: data.segments,
         },
       ]
     },
