@@ -5,6 +5,7 @@ import tseslint from 'typescript-eslint'
 import wc from 'eslint-plugin-wc'
 import unicorn from 'eslint-plugin-unicorn'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
+import importPlugin from 'eslint-plugin-import'
 
 const htmlA11yRules = {
   '@html-eslint/no-abstract-roles': 'error',
@@ -55,6 +56,26 @@ export default [
   {
     files: ['**/*.{jsx,tsx}'],
     ...jsxA11y.flatConfigs.recommended,
+  },
+  {
+    files: ['**/*.{js,mjs,cjs,ts,tsx}'],
+    plugins: {
+      import: importPlugin,
+    },
+    settings: {
+      'import/resolver': {
+        node: true,
+        typescript: true,
+      },
+    },
+    rules: {
+      'import/no-cycle': [
+        'error',
+        {
+          ignoreExternal: true,
+        },
+      ],
+    },
   },
   {
     files: ['**/*.{ts,tsx}'],

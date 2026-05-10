@@ -5,6 +5,7 @@ import type {
   CanvasBackground,
   ColorPicker,
   ControlStyle,
+  SaveDocument,
   SelectedCrayon,
   Serialization,
   WidthControls,
@@ -129,6 +130,14 @@ export const assertCanvasBackground = (value: string | null): CanvasBackground =
   }
 
   throw new TypeError('canvas-background must be either "white" or "black".')
+}
+
+export const assertSaveDocument = (value: string | null): SaveDocument => {
+  if (value === 'on' || value === 'off') {
+    return value
+  }
+
+  throw new TypeError('save-document must be either "on" or "off".')
 }
 
 const assertPositiveNumber = (value: number, name: string): number => {

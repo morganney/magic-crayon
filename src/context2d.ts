@@ -1,4 +1,11 @@
-import { FixedStack, FixedStackEvents } from './fixed-stack.js'
+import { Context2DHistory } from './context2d-history.js'
+import type { CustomNumberEventListener } from './context2d-history.js'
+import type {
+  DrawingDocumentV1,
+  StrokeCommand,
+  StrokePoint,
+} from './context2d-document.js'
+import { cloneCommand } from './context2d-document.js'
 
 const Dimensions = {
   WIDTH: 1280,
@@ -16,6 +23,7 @@ const Serializations = {
   BLOB: 'blob',
   DATA_URL: 'dataurl',
 } as const
+const DEFAULT_STROKE_STYLE = '#000000'
 
 type Mode = (typeof Mode)[keyof typeof Mode]
 type Serializations = (typeof Serializations)[keyof typeof Serializations]
@@ -26,6 +34,7 @@ type ContextState = Partial<{
   lineJoin: CanvasLineJoin
   lineWidth: number
   compositing: GlobalCompositeOperation
+  commandLimit: number
   serialization: Serializations
   backgroundColor: string
 }>
@@ -34,13 +43,6 @@ type Context2DMetaData = {
   view: [width: string, height: string]
   backgroundColor?: string
 }
-type CustomNumberEventListener = (evt: CustomEvent<number>) => void
-type PolyLineRecord = {
-  context: CanvasRenderingContext2D
-  mode: Mode
-  snapshotBefore: ImageData | null
-  snapshotAfter: ImageData | null
-}
 
 class Context2D {
   protected readonly raster: CanvasRenderingContext2D
@@ -48,16 +50,15 @@ class Context2D {
   protected isDrawing: boolean = false
   protected viewWidth: number = Dimensions.WIDTH
   protected viewHeight: number = Dimensions.HEIGHT
-  protected undo = new FixedStack<PolyLineRecord>(5)
-  protected redo = new FixedStack<PolyLineRecord>(5)
+  protected history: Context2DHistory
   protected scaleFactor: number = Math.ceil(Math.max(2, devicePixelRatio))
-  protected snapshot: ImageData = new ImageData(this.viewWidth, this.viewHeight)
-  protected snapshotDirty: boolean = false
   protected serialization: Serializations = Serializations.BLOB
   protected backgroundColor: string = '#ffffff'
-  protected activeStroke: PolyLineRecord | null = null
+  protected activeStroke: StrokeCommand | null = null
+  protected baseLayer: HTMLCanvasElement | null = null
 
   constructor(context: CanvasRenderingContext2D, options?: ContextState) {
+    this.history = new Context2DHistory(options?.commandLimit)
     this.raster = context
     this.resetState(this.raster, options)
     this.raster.imageSmoothingEnabled = false
@@ -100,11 +101,11 @@ class Context2D {
   }
 
   get undoStackSize(): number {
-    return this.undo.size
+    return this.history.undoSize
   }
 
   get redoStackSize(): number {
-    return this.redo.size
+    return this.history.redoSize
   }
 
   get strokeStyle(): Stroke {
@@ -149,27 +150,22 @@ class Context2D {
 
   protected beginPath(): void {
     this.raster.beginPath()
-    this.undo.peek().context.beginPath()
   }
 
   protected moveTo(posX: number, posY: number): void {
     this.raster.moveTo(posX, posY)
-    this.undo.peek().context.moveTo(posX, posY)
   }
 
   protected lineTo(posX: number, posY: number): void {
     this.raster.lineTo(posX, posY)
-    this.undo.peek().context.lineTo(posX, posY)
   }
 
   protected stroke(): void {
     this.raster.stroke()
-    this.undo.peek().context.stroke()
   }
 
   protected closePath(): void {
     this.raster.closePath()
-    this.undo.peek().context.closePath()
   }
 
   protected clearRect(): void {
@@ -206,27 +202,6 @@ class Context2D {
     this.raster.restore()
   }
 
-  protected setSnapshot(): void {
-    const { canvas } = this.raster
-    const width = Math.max(canvas.width, this.snapshot.width)
-    const height = Math.max(canvas.height, this.snapshot.height)
-
-    this.snapshot = this.raster.getImageData(0, 0, width - 1, height - 1)
-    this.snapshotDirty = false
-  }
-
-  protected markSnapshotDirty(): void {
-    this.snapshotDirty = true
-  }
-
-  protected syncSnapshotIfDirty(): void {
-    if (!this.snapshotDirty) {
-      return
-    }
-
-    this.setSnapshot()
-  }
-
   protected scaleForRetina(ctx: CanvasRenderingContext2D, canvasRect: DOMRect): void {
     ctx.canvas.width = Math.round(canvasRect.width * this.scaleFactor)
     ctx.canvas.height = Math.round(canvasRect.height * this.scaleFactor)
@@ -243,59 +218,102 @@ class Context2D {
     }
   }
 
-  protected copyState(
-    to: CanvasRenderingContext2D,
-    from?: CanvasRenderingContext2D,
-  ): void {
-    to.strokeStyle = from?.strokeStyle ?? this.strokeStyle
-    to.lineCap = from?.lineCap ?? this.lineCap
-    to.lineJoin = from?.lineJoin ?? this.lineJoin
-    to.lineWidth = from?.lineWidth ?? this.lineWidth
-    to.globalCompositeOperation = from?.globalCompositeOperation ?? this.compositing
+  protected copyState(to: CanvasRenderingContext2D, state: ContextState): void {
+    to.strokeStyle = state.strokeStyle ?? DEFAULT_STROKE_STYLE
+    to.lineCap = state.lineCap ?? 'round'
+    to.lineJoin = state.lineJoin ?? 'round'
+    to.lineWidth = state.lineWidth ?? 5
+    to.globalCompositeOperation = state.compositing ?? 'source-over'
   }
 
   protected resetState(to: CanvasRenderingContext2D, state?: ContextState) {
-    to.strokeStyle = state?.strokeStyle ?? '#000000'
+    to.strokeStyle = state?.strokeStyle ?? DEFAULT_STROKE_STYLE
     to.lineWidth = state?.lineWidth ?? 5
     to.lineCap = state?.lineCap ?? 'round'
     to.lineJoin = state?.lineJoin ?? 'round'
     to.globalCompositeOperation = state?.compositing ?? 'source-over'
   }
 
-  protected createOffscreenContext(): CanvasRenderingContext2D {
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
-    const rect = this.raster.canvas.getBoundingClientRect()
-
-    // Scale first because resizing canvas resets state
-    this.scaleForRetina(ctx, rect)
-    this.copyState(ctx)
-
-    return ctx
+  protected toSerializableStrokeStyle(strokeStyle: Stroke): string {
+    return typeof strokeStyle === 'string' ? strokeStyle : DEFAULT_STROKE_STYLE
   }
 
-  protected cloneImageData(source: ImageData): ImageData {
-    return new ImageData(new Uint8ClampedArray(source.data), source.width, source.height)
+  protected toStrokePoint(point: DOMPoint): StrokePoint {
+    return {
+      x: point.x,
+      y: point.y,
+    }
   }
 
-  protected putSnapshot(snapshot: ImageData): void {
+  protected scalePoint(command: StrokeCommand, point: StrokePoint): DOMPoint {
+    const sourceWidth = command.sourceWidth <= 0 ? 1 : command.sourceWidth
+    const sourceHeight = command.sourceHeight <= 0 ? 1 : command.sourceHeight
+
+    return new DOMPoint(
+      (point.x / sourceWidth) * this.viewWidth,
+      (point.y / sourceHeight) * this.viewHeight,
+    )
+  }
+
+  protected replayCommands(): void {
     this.clearRect()
-    this.raster.putImageData(snapshot, 0, 0)
-  }
 
-  protected pushUndo(context: CanvasRenderingContext2D): PolyLineRecord {
-    const polyline: PolyLineRecord = {
-      context,
-      mode: this.mode,
-      snapshotBefore:
-        this.mode === Mode.ERASE ? this.cloneImageData(this.snapshot) : null,
-      snapshotAfter: null,
+    if (this.baseLayer) {
+      this.drawImage(this.baseLayer)
     }
 
-    context.globalCompositeOperation = Composites.DRAW
-    this.undo.push(polyline)
+    for (const command of this.history.getCommands()) {
+      this.drawCommand(command)
+    }
+  }
 
-    return polyline
+  protected snapshotBaseLayer(): void {
+    const snapshot = document.createElement('canvas')
+
+    snapshot.width = this.raster.canvas.width
+    snapshot.height = this.raster.canvas.height
+
+    const context = snapshot.getContext('2d')
+
+    if (!context) {
+      this.baseLayer = null
+
+      return
+    }
+
+    context.drawImage(this.raster.canvas, 0, 0)
+    this.baseLayer = snapshot
+  }
+
+  protected drawCommand(command: StrokeCommand): void {
+    const [start, ...rest] = command.points
+
+    if (!start) {
+      return
+    }
+
+    this.save()
+    this.copyState(this.raster, {
+      strokeStyle: command.strokeStyle,
+      lineCap: command.lineCap,
+      lineJoin: command.lineJoin,
+      lineWidth: command.lineWidth,
+      compositing: command.compositing,
+    })
+
+    const startPoint = this.scalePoint(command, start)
+
+    this.raster.beginPath()
+    this.raster.moveTo(startPoint.x, startPoint.y)
+
+    for (const point of rest) {
+      const next = this.scalePoint(command, point)
+
+      this.raster.lineTo(next.x, next.y)
+      this.raster.stroke()
+    }
+
+    this.restore()
   }
 
   protected setDataUrl(dataUrl: string): Promise<void> {
@@ -304,7 +322,8 @@ class Context2D {
 
       img.onload = () => {
         this.drawImage(img)
-        this.setSnapshot()
+        this.snapshotBaseLayer()
+        this.history.clear()
         resolve()
       }
       img.onerror = () => {
@@ -358,97 +377,55 @@ class Context2D {
   }
 
   applyUndo(): void {
-    const undo = this.undo.pop()
-
-    if (undo.mode === Mode.ERASE && undo.snapshotBefore) {
-      this.redo.push(undo)
-      this.putSnapshot(undo.snapshotBefore)
-      this.snapshot = this.cloneImageData(undo.snapshotBefore)
-      this.snapshotDirty = false
-
-      return
-    }
-
-    const origCompositeOp = undo.context.globalCompositeOperation
-
-    this.redo.push(undo)
-    this.save()
-
-    undo.context.globalCompositeOperation =
-      undo.mode === Mode.DRAW ? Composites.ERASE : Composites.DRAW
-    this.copyState(this.raster, undo.context)
-
-    this.drawImage(undo.context.canvas, true)
-
-    undo.context.globalCompositeOperation = origCompositeOp
-    this.restore()
-    this.markSnapshotDirty()
+    this.history.applyUndo()
+    this.replayCommands()
   }
 
   applyRedo(): void {
-    const redo = this.redo.pop()
-
-    if (redo.mode === Mode.ERASE && redo.snapshotAfter) {
-      this.undo.push(redo)
-      this.putSnapshot(redo.snapshotAfter)
-      this.snapshot = this.cloneImageData(redo.snapshotAfter)
-      this.snapshotDirty = false
-
-      return
-    }
-
-    const origCompositeOp = redo.context.globalCompositeOperation
-
-    this.undo.push(redo)
-    this.save()
-    redo.context.globalCompositeOperation =
-      redo.mode === Mode.ERASE ? Composites.ERASE : Composites.DRAW
-    this.copyState(this.raster, redo.context)
-
-    this.drawImage(redo.context.canvas)
-
-    redo.context.globalCompositeOperation = origCompositeOp
-    this.restore()
-    this.markSnapshotDirty()
+    this.history.applyRedo()
+    this.replayCommands()
   }
 
   registerListeners(
     undo: CustomNumberEventListener,
     redo: CustomNumberEventListener,
   ): void {
-    this.undo.addEventListener(FixedStackEvents.SIZE_CHANGE, undo as EventListener)
-    this.redo.addEventListener(FixedStackEvents.SIZE_CHANGE, redo as EventListener)
+    this.history.registerListeners(undo, redo)
   }
 
   unregisterListeners(
     undo: CustomNumberEventListener,
     redo: CustomNumberEventListener,
   ): void {
-    this.undo.removeEventListener(FixedStackEvents.SIZE_CHANGE, undo as EventListener)
-    this.redo.removeEventListener(FixedStackEvents.SIZE_CHANGE, redo as EventListener)
+    this.history.unregisterListeners(undo, redo)
   }
 
   rescale(): void {
     const rect = this.raster.canvas.getBoundingClientRect()
     const state = this.getState()
 
-    this.syncSnapshotIfDirty()
-
     this.viewWidth = rect.width
     this.viewHeight = rect.height
     this.scaleForRetina(this.raster, rect)
     this.resetState(this.raster, state)
-    this.raster.putImageData(this.snapshot, 0, 0)
+    this.replayCommands()
+    this.resetState(this.raster, state)
   }
 
   startDrawing(pos: DOMPoint): void {
-    if (this.mode === Mode.ERASE) {
-      this.syncSnapshotIfDirty()
-    }
-
     this.isDrawing = true
-    this.activeStroke = this.pushUndo(this.createOffscreenContext())
-    this.redo.clear()
+    this.activeStroke = {
+      mode: this.mode,
+      strokeStyle: this.toSerializableStrokeStyle(this.strokeStyle),
+      lineCap: this.lineCap,
+      lineJoin: this.lineJoin,
+      lineWidth: this.lineWidth,
+      compositing: this.compositing,
+      sourceWidth: this.viewWidth,
+      sourceHeight: this.viewHeight,
+      points: [this.toStrokePoint(pos)],
+    }
+    this.history.clearRedo()
     this.beginPath()
     this.moveTo(pos.x, pos.y)
   }
@@ -456,25 +433,50 @@ class Context2D {
   stopDrawing(): void {
     this.isDrawing = false
 
-    if (this.activeStroke?.mode === Mode.ERASE) {
-      this.syncSnapshotIfDirty()
-      this.activeStroke.snapshotAfter = this.cloneImageData(this.snapshot)
+    if (this.activeStroke) {
+      this.history.add(this.activeStroke)
     }
 
     this.activeStroke = null
   }
 
   draw(pos: DOMPoint): void {
-    if (this.isDrawing) {
-      this.lineTo(pos.x, pos.y)
-      this.stroke()
-      this.markSnapshotDirty()
+    if (!this.isDrawing) {
+      return
     }
+
+    if (this.activeStroke) {
+      this.activeStroke.points.push(this.toStrokePoint(pos))
+    }
+
+    this.lineTo(pos.x, pos.y)
+    this.stroke()
   }
 
   clear(): void {
     this.clearRect()
-    this.setSnapshot()
+    this.baseLayer = null
+    this.history.clear()
+    this.activeStroke = null
+    this.isDrawing = false
+  }
+
+  appendStroke(stroke: StrokeCommand): void {
+    const next = cloneCommand(stroke)
+
+    this.history.clearRedo()
+    this.history.add(next)
+    this.drawCommand(next)
+  }
+
+  getDocument(): DrawingDocumentV1 {
+    return this.history.getDocument()
+  }
+
+  setDocument(document: DrawingDocumentV1): void {
+    this.baseLayer = null
+    this.history.setDocument(document)
+    this.replayCommands()
   }
 
   getMetaData(): Context2DMetaData {
@@ -511,4 +513,10 @@ class Context2D {
 }
 
 export { Context2D, Dimensions, Composites, Mode, Serializations }
-export type { CustomNumberEventListener, Context2DMetaData }
+export type {
+  CustomNumberEventListener,
+  Context2DMetaData,
+  StrokePoint,
+  StrokeCommand,
+  DrawingDocumentV1,
+}

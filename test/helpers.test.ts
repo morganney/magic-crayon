@@ -4,6 +4,7 @@ import {
   assertAnchor,
   assertCanvasBackground,
   assertControlStyle,
+  assertSaveDocument,
   parseActionIcon,
   parseCrayonIcon,
   parseTemplateNode,
@@ -44,6 +45,12 @@ describe('helpers', () => {
   it('throws when canvas-background is invalid', () => {
     expect(() => assertCanvasBackground('other')).toThrow(
       'canvas-background must be either "white" or "black".',
+    )
+  })
+
+  it('throws when save-document is invalid', () => {
+    expect(() => assertSaveDocument('other')).toThrow(
+      'save-document must be either "on" or "off".',
     )
   })
 

@@ -1,6 +1,6 @@
 {
   "name": "magic-crayon",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "type": "module",
   "description": "An HTML custom element for using a crayon to draw on a canvas and serialize as a blob or data URL.",
   "homepage": "https://github.com/morganney/magic-crayon#readme",
@@ -18,6 +18,22 @@
     ".": {
       "types": "./dist/magic-crayon.d.ts",
       "import": "./dist/magic-crayon.js"
+    },
+    "./command-api": {
+      "types": "./dist/command-api.d.ts",
+      "import": "./dist/command-api.js"
+    },
+    "./command-runtime": {
+      "types": "./dist/command-runtime.d.ts",
+      "import": "./dist/command-runtime.js"
+    },
+    "./adapters/ai-sdk": {
+      "types": "./dist/adapters/ai-sdk.d.ts",
+      "import": "./dist/adapters-ai-sdk.js"
+    },
+    "./adapters/copilotkit": {
+      "types": "./dist/adapters/copilotkit.d.ts",
+      "import": "./dist/adapters-copilotkit.js"
     },
     "./defined": {
       "types": "./dist/defined.d.ts",
@@ -79,24 +95,29 @@
     "@types/clean-css": "^4.2.11",
     "@types/html-minifier-terser": "^7.0.2",
     "@types/node": "^24.10.13",
-    "@vitest/browser-playwright": "^4.0.18",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/browser-playwright": "^4.1.5",
+    "@vitest/coverage-v8": "^4.1.5",
     "clean-css": "^5.3.3",
-    "eslint": "^9.39.3",
+    "eslint": "^9.39.4",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-unicorn": "^61.0.2",
     "eslint-plugin-wc": "^3.1.0",
     "html-minifier-terser": "^7.2.0",
     "http-server": "^14.1.1",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.1",
+    "lint-staged": "^17.0.4",
     "prettier": "^3.8.1",
     "storybook": "^10.2.13",
-    "svgo": "^4.0.0",
+    "svgo": "^4.0.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^7.3.1",
-    "vitest": "^4.0.18"
+    "vite": "^8.0.11",
+    "vitest": "^4.1.5"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
   },
   "prettier": {
     "arrowParens": "avoid",

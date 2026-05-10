@@ -1,4 +1,4 @@
-import type { Context2DMetaData } from './context2d.js'
+import type { Context2DMetaData, DrawingDocumentV1 } from './context2d.js'
 
 export type Serialization = 'blob' | 'dataurl'
 export type ColorPicker = 'crayon' | 'swatch' | 'input'
@@ -8,6 +8,7 @@ export type Anchor = 'top' | 'center' | 'bottom'
 export type WidthControls = 'on' | 'off'
 export type ControlStyle = 'text' | 'icon'
 export type CanvasBackground = 'white' | 'black'
+export type SaveDocument = 'on' | 'off'
 export type CursorStyle = string
 export type DrawingData = Blob | string
 
@@ -16,6 +17,7 @@ export type SaveDetail = {
   serialization: Serialization
   meta: Context2DMetaData
   timestamp: string
+  document?: DrawingDocumentV1
 }
 
 export type AvailabilityDetail = {
