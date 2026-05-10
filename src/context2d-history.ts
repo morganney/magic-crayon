@@ -1,17 +1,16 @@
 import { FixedStack, FixedStackEvents } from './fixed-stack.js'
 import {
-  HISTORY_LIMIT,
-  clampHistory,
   cloneCommand,
   type DrawingDocumentV1,
   type StrokeCommand,
 } from './context2d-document.js'
 
 type CustomNumberEventListener = (evt: CustomEvent<number>) => void
+const UNDO_LIMIT = 5
 
 class Context2DHistory {
-  protected readonly undo = new FixedStack<StrokeCommand>(HISTORY_LIMIT)
-  protected readonly redo = new FixedStack<StrokeCommand>(HISTORY_LIMIT)
+  protected readonly undo = new FixedStack<StrokeCommand>(UNDO_LIMIT)
+  protected readonly redo = new FixedStack<StrokeCommand>(UNDO_LIMIT)
   protected commands: StrokeCommand[] = []
 
   get undoSize(): number {
@@ -24,10 +23,6 @@ class Context2DHistory {
 
   add(command: StrokeCommand): void {
     this.commands.push(cloneCommand(command))
-
-    if (this.commands.length > HISTORY_LIMIT) {
-      this.commands.shift()
-    }
 
     this.undo.push(cloneCommand(command))
   }
@@ -72,7 +67,7 @@ class Context2DHistory {
   }
 
   setDocument(document: DrawingDocumentV1): void {
-    const nextStrokes = clampHistory(document.strokes.map(stroke => cloneCommand(stroke)))
+    const nextStrokes = document.strokes.map(stroke => cloneCommand(stroke))
 
     this.commands = nextStrokes
     this.undo.clear()

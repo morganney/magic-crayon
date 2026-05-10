@@ -1,5 +1,3 @@
-const HISTORY_LIMIT = 5
-
 type StrokePoint = {
   x: number
   y: number
@@ -29,13 +27,5 @@ const cloneCommand = (command: StrokeCommand): StrokeCommand => {
   }
 }
 
-const clampHistory = (strokes: StrokeCommand[]): StrokeCommand[] => {
-  if (strokes.length <= HISTORY_LIMIT) {
-    return strokes
-  }
-
-  return strokes.slice(strokes.length - HISTORY_LIMIT)
-}
-
-export { HISTORY_LIMIT, cloneCommand, clampHistory }
+export { cloneCommand }
 export type { StrokePoint, StrokeCommand, DrawingDocumentV1 }

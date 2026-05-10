@@ -408,4 +408,28 @@ describe('Context2D', () => {
 
     expect(drawing.undoStackSize).toBe(5)
   })
+
+  it('preserves full replay history beyond undo depth', () => {
+    const { drawing } = setup()
+
+    for (let index = 0; index < 7; index += 1) {
+      const x = 10 + index * 8
+
+      drawing.startDrawing(new DOMPoint(x, 20))
+      drawing.draw(new DOMPoint(x + 6, 26))
+      drawing.stopDrawing()
+    }
+
+    const beforeUndo = drawing.getDocument()
+
+    expect(beforeUndo.strokes.length).toBe(7)
+    expect(drawing.undoStackSize).toBe(5)
+
+    drawing.applyUndo()
+
+    const afterUndo = drawing.getDocument()
+
+    expect(afterUndo.strokes.length).toBe(6)
+    expect(afterUndo.strokes[0]?.points[0]?.x).toBe(beforeUndo.strokes[0]?.points[0]?.x)
+  })
 })
