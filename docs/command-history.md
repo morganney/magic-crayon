@@ -95,11 +95,10 @@ Command replay introduces redraw cost. Mitigate to avoid frame drops/jank:
 
 ## Deferred Work
 
-- Public agent command API design.
 - Save payload document embedding (`save.detail.document`).
 - Protocol-specific adapters (AI SDK, AGUI, etc.).
 
 ## Next Step
 
-Design the public, agent-agnostic command API on top of `DrawingDocumentV1`
-now that internal replay behavior and clear semantics are stable.
+Add optional `save.detail.document` embedding so hosts can persist and restore
+command-native state without bitmap conversion.

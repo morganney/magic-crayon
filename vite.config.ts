@@ -92,6 +92,7 @@ export default defineConfig({
     lib: {
       entry: {
         'magic-crayon': 'src/magic-crayon.ts',
+        'command-runtime': 'src/command-runtime.ts',
         defined: 'src/defined.ts',
       },
       formats: ['es'],

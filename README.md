@@ -178,6 +178,11 @@ All events bubble and are composed.
 
 Type declarations are published with the package and mapped via `exports`.
 
+## Command API
+
+The versioned public command contract for agent integrations is documented in
+[docs/command-api.md](docs/command-api.md).
+
 ## Development
 
 For local development, build, testing, and Storybook workflows, see [docs/development.md](docs/development.md).

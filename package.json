@@ -19,6 +19,10 @@
       "types": "./dist/magic-crayon.d.ts",
       "import": "./dist/magic-crayon.js"
     },
+    "./command-runtime": {
+      "types": "./dist/command-runtime.d.ts",
+      "import": "./dist/command-runtime.js"
+    },
     "./defined": {
       "types": "./dist/defined.d.ts",
       "import": "./dist/defined.js"
