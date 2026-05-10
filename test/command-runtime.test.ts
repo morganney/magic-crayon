@@ -62,6 +62,56 @@ describe('command runtime helpers', () => {
     expect(state.redoSize).toBe(0)
   })
 
+  it('uses appendStroke fast path when runtime provides it', () => {
+    const strokes: Array<{
+      mode: 'draw' | 'erase'
+      strokeStyle: string
+      lineCap: CanvasLineCap
+      lineJoin: CanvasLineJoin
+      lineWidth: number
+      compositing: GlobalCompositeOperation
+      sourceWidth: number
+      sourceHeight: number
+      points: Array<{ x: number; y: number }>
+    }> = []
+    let appendCalls = 0
+    let setDocumentCalls = 0
+    const runtime: CommandRuntimeAdapterV1 = {
+      getDocument: () => ({ version: 1, strokes }),
+      setDocument: document => {
+        setDocumentCalls += 1
+        strokes.splice(0, strokes.length, ...document.strokes)
+      },
+      appendStroke: stroke => {
+        appendCalls += 1
+        strokes.push(stroke)
+      },
+      clear: () => {
+        strokes.splice(0, strokes.length)
+      },
+      undo: () => undefined,
+      redo: () => undefined,
+      getUndoSize: () => strokes.length,
+      getRedoSize: () => 0,
+    }
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-path',
+      points: [
+        { x: 10, y: 10 },
+        { x: 50, y: 50 },
+      ],
+      style: {
+        strokeWidth: 4,
+      },
+    })
+
+    expect(result.status).toBe('applied')
+    expect(appendCalls).toBe(1)
+    expect(setDocumentCalls).toBe(0)
+    expect(strokes).toHaveLength(1)
+  })
+
   it('rejects invalid path input without changing state', () => {
     const { runtime } = setupContextRuntime()
     const command: MagicCrayonCommandV1 = {
@@ -125,6 +175,37 @@ describe('command runtime helpers', () => {
     expect(getCommandApiStateV1(runtime).document.strokes).toHaveLength(1)
   })
 
+  it('clears redo history when a new draw command is appended after undo', () => {
+    const { runtime } = setupContextRuntime()
+
+    executeCommandV1(runtime, {
+      kind: 'draw-path',
+      points: [
+        { x: 10, y: 20 },
+        { x: 80, y: 20 },
+      ],
+      style: { strokeWidth: 2 },
+    })
+
+    executeCommandV1(runtime, { kind: 'undo' })
+
+    expect(getCommandApiStateV1(runtime).redoSize).toBe(1)
+
+    executeCommandV1(runtime, {
+      kind: 'draw-path',
+      points: [
+        { x: 20, y: 30 },
+        { x: 60, y: 30 },
+      ],
+      style: { strokeWidth: 2 },
+    })
+
+    const redoAfterNewDraw = executeCommandV1(runtime, { kind: 'redo' })
+
+    expect(redoAfterNewDraw.status).toBe('noop')
+    expect(getCommandApiStateV1(runtime).redoSize).toBe(0)
+  })
+
   it('returns noop for clear on empty and applies clear when non-empty', () => {
     const { runtime } = setupContextRuntime()
 
@@ -175,6 +256,77 @@ describe('command runtime helpers', () => {
 
     expect(result.status).toBe('applied')
     expect(getCommandApiStateV1(runtime).document.strokes).toHaveLength(1)
+  })
+
+  it('rejects erase-rect when bounds are invalid', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'erase-rect',
+      rect: {
+        x: 90,
+        y: 10,
+        width: 20,
+        height: 20,
+      },
+    })
+
+    expect(result.status).toBe('rejected')
+    expect(result.reason).toContain('in-bounds')
+  })
+
+  it('rejects erase-rect when runtime has no eraseRect implementation', () => {
+    const runtime: CommandRuntimeAdapterV1 = {
+      getDocument: () => ({ version: 1, strokes: [] }),
+      setDocument: () => undefined,
+      clear: () => undefined,
+      undo: () => undefined,
+      redo: () => undefined,
+      getUndoSize: () => 0,
+      getRedoSize: () => 0,
+    }
+
+    const result = executeCommandV1(runtime, {
+      kind: 'erase-rect',
+      rect: {
+        x: 10,
+        y: 10,
+        width: 20,
+        height: 20,
+      },
+    })
+
+    expect(result.status).toBe('rejected')
+    expect(result.reason).toContain('not implemented')
+  })
+
+  it('applies erase-rect when runtime implementation exists', () => {
+    let erased = false
+    const runtime: CommandRuntimeAdapterV1 = {
+      getDocument: () => ({ version: 1, strokes: [] }),
+      setDocument: () => undefined,
+      clear: () => undefined,
+      undo: () => undefined,
+      redo: () => undefined,
+      getUndoSize: () => 0,
+      getRedoSize: () => 0,
+      eraseRect: () => {
+        erased = true
+      },
+    }
+
+    const result = executeCommandV1(runtime, {
+      kind: 'erase-rect',
+      rect: {
+        x: 10,
+        y: 10,
+        width: 20,
+        height: 20,
+      },
+    })
+
+    expect(result.status).toBe('applied')
+    expect(erased).toBe(true)
   })
 
   it('runs batches and reports ordered per-command results', () => {

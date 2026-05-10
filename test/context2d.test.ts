@@ -56,6 +56,30 @@ describe('Context2D', () => {
     expect(meta.backgroundColor).toBe('#ffffff')
   })
 
+  it('serializes gradient stroke styles to a string in exported documents', () => {
+    const { drawing, canvas } = setup()
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      throw new Error('2d context is required for test')
+    }
+
+    const gradient = context.createLinearGradient(0, 0, 100, 0)
+
+    gradient.addColorStop(0, '#000000')
+    gradient.addColorStop(1, '#ffffff')
+
+    drawing.strokeStyle = gradient
+    drawing.startDrawing(new DOMPoint(10, 10))
+    drawing.draw(new DOMPoint(40, 20))
+    drawing.stopDrawing()
+
+    const document = drawing.getDocument()
+
+    expect(typeof document.strokes[0]?.strokeStyle).toBe('string')
+    expect(document.strokes[0]?.strokeStyle).toBe('#000000')
+  })
+
   it('supports drawing lifecycle with undo/redo and listeners', () => {
     const { drawing } = setup()
     const undoSizes: number[] = []
@@ -407,6 +431,66 @@ describe('Context2D', () => {
     })
 
     expect(drawing.undoStackSize).toBe(5)
+  })
+
+  it('undoes newest stroke first after setDocument', () => {
+    const { drawing } = setup()
+
+    drawing.setDocument({
+      version: 1,
+      strokes: [
+        {
+          mode: Mode.DRAW,
+          strokeStyle: '#000000',
+          lineCap: 'round',
+          lineJoin: 'round',
+          lineWidth: 5,
+          compositing: Composites.DRAW,
+          sourceWidth: 200,
+          sourceHeight: 100,
+          points: [
+            { x: 10, y: 10 },
+            { x: 20, y: 20 },
+          ],
+        },
+        {
+          mode: Mode.DRAW,
+          strokeStyle: '#111111',
+          lineCap: 'round',
+          lineJoin: 'round',
+          lineWidth: 5,
+          compositing: Composites.DRAW,
+          sourceWidth: 200,
+          sourceHeight: 100,
+          points: [
+            { x: 30, y: 10 },
+            { x: 40, y: 20 },
+          ],
+        },
+        {
+          mode: Mode.DRAW,
+          strokeStyle: '#222222',
+          lineCap: 'round',
+          lineJoin: 'round',
+          lineWidth: 5,
+          compositing: Composites.DRAW,
+          sourceWidth: 200,
+          sourceHeight: 100,
+          points: [
+            { x: 50, y: 10 },
+            { x: 60, y: 20 },
+          ],
+        },
+      ],
+    })
+
+    drawing.applyUndo()
+
+    const document = drawing.getDocument()
+
+    expect(document.strokes).toHaveLength(2)
+    expect(document.strokes[0]?.points[0]?.x).toBe(10)
+    expect(document.strokes[1]?.points[0]?.x).toBe(30)
   })
 
   it('preserves full replay history beyond undo depth', () => {

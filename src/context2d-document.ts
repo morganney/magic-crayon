@@ -5,7 +5,7 @@ type StrokePoint = {
 
 type StrokeCommand = {
   mode: 'draw' | 'erase'
-  strokeStyle: string | CanvasGradient | CanvasPattern
+  strokeStyle: string
   lineCap: CanvasLineCap
   lineJoin: CanvasLineJoin
   lineWidth: number

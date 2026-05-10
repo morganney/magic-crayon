@@ -12,6 +12,7 @@ import type { DrawingDocumentV1, StrokeCommand } from './context2d-document.js'
 type CommandRuntimeAdapterV1 = {
   getDocument(): DrawingDocumentV1
   setDocument(document: DrawingDocumentV1): void
+  appendStroke?(stroke: StrokeCommand): void
   clear(): void
   undo(): void
   redo(): void
@@ -174,6 +175,12 @@ const toStrokeCommand = (command: MagicCrayonCommandV1): StrokeCommand | null =>
 }
 
 const appendStroke = (runtime: CommandRuntimeAdapterV1, stroke: StrokeCommand): void => {
+  if (runtime.appendStroke) {
+    runtime.appendStroke(stroke)
+
+    return
+  }
+
   const current = runtime.getDocument()
 
   runtime.setDocument({
@@ -288,6 +295,7 @@ const createContext2DCommandRuntime = (context2d: Context2D): CommandRuntimeAdap
   return {
     getDocument: () => context2d.getDocument(),
     setDocument: document => context2d.setDocument(document),
+    appendStroke: stroke => context2d.appendStroke(stroke),
     clear: () => context2d.clear(),
     undo: () => context2d.applyUndo(),
     redo: () => context2d.applyRedo(),

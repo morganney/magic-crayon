@@ -73,8 +73,8 @@ class Context2DHistory {
     this.undo.clear()
     this.redo.clear()
 
-    for (let index = nextStrokes.length - 1; index >= 0; index -= 1) {
-      this.undo.push(cloneCommand(nextStrokes[index]))
+    for (const stroke of nextStrokes) {
+      this.undo.push(cloneCommand(stroke))
     }
   }
 

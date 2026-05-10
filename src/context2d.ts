@@ -5,6 +5,7 @@ import type {
   StrokeCommand,
   StrokePoint,
 } from './context2d-document.js'
+import { cloneCommand } from './context2d-document.js'
 
 const Dimensions = {
   WIDTH: 1280,
@@ -22,6 +23,7 @@ const Serializations = {
   BLOB: 'blob',
   DATA_URL: 'dataurl',
 } as const
+const DEFAULT_STROKE_STYLE = '#000000'
 
 type Mode = (typeof Mode)[keyof typeof Mode]
 type Serializations = (typeof Serializations)[keyof typeof Serializations]
@@ -214,7 +216,7 @@ class Context2D {
   }
 
   protected copyState(to: CanvasRenderingContext2D, state: ContextState): void {
-    to.strokeStyle = state.strokeStyle ?? '#000000'
+    to.strokeStyle = state.strokeStyle ?? DEFAULT_STROKE_STYLE
     to.lineCap = state.lineCap ?? 'round'
     to.lineJoin = state.lineJoin ?? 'round'
     to.lineWidth = state.lineWidth ?? 5
@@ -222,11 +224,15 @@ class Context2D {
   }
 
   protected resetState(to: CanvasRenderingContext2D, state?: ContextState) {
-    to.strokeStyle = state?.strokeStyle ?? '#000000'
+    to.strokeStyle = state?.strokeStyle ?? DEFAULT_STROKE_STYLE
     to.lineWidth = state?.lineWidth ?? 5
     to.lineCap = state?.lineCap ?? 'round'
     to.lineJoin = state?.lineJoin ?? 'round'
     to.globalCompositeOperation = state?.compositing ?? 'source-over'
+  }
+
+  protected toSerializableStrokeStyle(strokeStyle: Stroke): string {
+    return typeof strokeStyle === 'string' ? strokeStyle : DEFAULT_STROKE_STYLE
   }
 
   protected toStrokePoint(point: DOMPoint): StrokePoint {
@@ -384,7 +390,7 @@ class Context2D {
     this.isDrawing = true
     this.activeStroke = {
       mode: this.mode,
-      strokeStyle: this.strokeStyle,
+      strokeStyle: this.toSerializableStrokeStyle(this.strokeStyle),
       lineCap: this.lineCap,
       lineJoin: this.lineJoin,
       lineWidth: this.lineWidth,
@@ -426,6 +432,14 @@ class Context2D {
     this.history.clear()
     this.activeStroke = null
     this.isDrawing = false
+  }
+
+  appendStroke(stroke: StrokeCommand): void {
+    const next = cloneCommand(stroke)
+
+    this.history.clearRedo()
+    this.history.add(next)
+    this.drawCommand(next)
   }
 
   getDocument(): DrawingDocumentV1 {

@@ -21,6 +21,7 @@ const toCommandKind = (value: string): MagicCrayonCommandV1['kind'] | null => {
     normalized === 'draw-circle' ||
     normalized === 'erase-path' ||
     normalized === 'erase-rect' ||
+    normalized === 'replace-document' ||
     normalized === 'clear' ||
     normalized === 'undo' ||
     normalized === 'redo'

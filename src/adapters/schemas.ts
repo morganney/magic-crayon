@@ -45,6 +45,60 @@ const eraseRectCommandSchema = z.object({
   }),
 })
 
+const globalCompositeOperationSchema = z.enum([
+  'source-over',
+  'source-in',
+  'source-out',
+  'source-atop',
+  'destination-over',
+  'destination-in',
+  'destination-out',
+  'destination-atop',
+  'lighter',
+  'copy',
+  'xor',
+  'multiply',
+  'screen',
+  'overlay',
+  'darken',
+  'lighten',
+  'color-dodge',
+  'color-burn',
+  'hard-light',
+  'soft-light',
+  'difference',
+  'exclusion',
+  'hue',
+  'saturation',
+  'color',
+  'luminosity',
+])
+
+const strokePointSchema = z.object({
+  x: z.number().finite().min(0),
+  y: z.number().finite().min(0),
+})
+
+const replaceDocumentCommandSchema = z.object({
+  kind: z.literal('replace-document'),
+  document: z.object({
+    version: z.literal(1),
+    strokes: z.array(
+      z.object({
+        mode: z.enum(['draw', 'erase']),
+        strokeStyle: z.string().min(1),
+        lineCap: z.enum(['butt', 'round', 'square']),
+        lineJoin: z.enum(['bevel', 'round', 'miter']),
+        lineWidth: z.number().finite().positive(),
+        compositing: globalCompositeOperationSchema,
+        sourceWidth: z.number().finite().positive(),
+        sourceHeight: z.number().finite().positive(),
+        points: z.array(strokePointSchema).min(1),
+      }),
+    ),
+  }),
+})
+
 const clearCommandSchema = z.object({
   kind: z.literal('clear'),
 })
@@ -62,6 +116,7 @@ const commandSchema = z.discriminatedUnion('kind', [
   erasePathCommandSchema,
   drawCircleCommandSchema,
   eraseRectCommandSchema,
+  replaceDocumentCommandSchema,
   clearCommandSchema,
   undoCommandSchema,
   redoCommandSchema,
@@ -82,6 +137,7 @@ export {
   drawPathCommandSchema,
   erasePathCommandSchema,
   eraseRectCommandSchema,
+  replaceDocumentCommandSchema,
   styleSchema,
 }
 export { toCommand }
