@@ -19,9 +19,21 @@
       "types": "./dist/magic-crayon.d.ts",
       "import": "./dist/magic-crayon.js"
     },
+    "./command-api": {
+      "types": "./dist/command-api.d.ts",
+      "import": "./dist/command-api.js"
+    },
     "./command-runtime": {
       "types": "./dist/command-runtime.d.ts",
       "import": "./dist/command-runtime.js"
+    },
+    "./adapters/ai-sdk": {
+      "types": "./dist/adapters/ai-sdk.d.ts",
+      "import": "./dist/adapters-ai-sdk.js"
+    },
+    "./adapters/copilotkit": {
+      "types": "./dist/adapters/copilotkit.d.ts",
+      "import": "./dist/adapters-copilotkit.js"
     },
     "./defined": {
       "types": "./dist/defined.d.ts",
@@ -107,5 +119,8 @@
     "printWidth": 90,
     "semi": false,
     "singleQuote": true
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
   }
 }

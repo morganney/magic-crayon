@@ -25,6 +25,13 @@ export type DrawPathCommand = {
   style: CommandStrokeStyle
 }
 
+export type DrawCircleCommand = {
+  kind: 'draw-circle'
+  center: NormalizedPoint
+  radius: number
+  style: CommandStrokeStyle
+}
+
 export type ErasePathCommand = {
   kind: 'erase-path'
   points: NormalizedPoint[]
@@ -55,6 +62,7 @@ export type ReplaceDocumentCommand = {
 
 export type MagicCrayonCommandV1 =
   | DrawPathCommand
+  | DrawCircleCommand
   | ErasePathCommand
   | EraseRectCommand
   | ClearCommand

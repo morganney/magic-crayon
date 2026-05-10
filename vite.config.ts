@@ -92,7 +92,10 @@ export default defineConfig({
     lib: {
       entry: {
         'magic-crayon': 'src/magic-crayon.ts',
+        'command-api': 'src/command-api.ts',
         'command-runtime': 'src/command-runtime.ts',
+        'adapters-ai-sdk': 'src/adapters/ai-sdk.ts',
+        'adapters-copilotkit': 'src/adapters/copilotkit.ts',
         defined: 'src/defined.ts',
       },
       formats: ['es'],

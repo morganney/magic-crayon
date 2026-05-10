@@ -1,0 +1,266 @@
+import { asRecord, asString } from '../../command-mapper.js'
+import type { AdapterParseResult, MagicCrayonVendorAdapter } from '../../types.js'
+import type { MagicCrayonCommandV1 } from '../../../command-api.js'
+import {
+  directCommandSchema,
+  directCommandsSchema,
+  drawCircleToolSchema,
+  drawPathToolSchema,
+  erasePathToolSchema,
+  eraseRectToolSchema,
+  noPayloadToolSchema,
+} from './schema.js'
+
+type ToolSpec = {
+  schema: {
+    safeParse(input: unknown): { success: true; data: unknown } | { success: false }
+  }
+  map(input: unknown): MagicCrayonCommandV1[]
+}
+
+const normalizeName = (value: string): string => {
+  return value
+    .replace('magic-crayon.', '')
+    .replace('magic_crayon.', '')
+    .trim()
+    .toLowerCase()
+}
+
+const toolRegistry: Record<string, ToolSpec> = {
+  'draw-path': {
+    schema: drawPathToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const data = input as {
+        points: Array<{ x: number; y: number }>
+        style: {
+          strokeWidth: number
+          lineCap?: CanvasLineCap
+          lineJoin?: CanvasLineJoin
+          color?: string
+        }
+      }
+
+      return [
+        {
+          kind: 'draw-path',
+          points: data.points,
+          style: data.style,
+        },
+      ]
+    },
+  },
+  'erase-path': {
+    schema: erasePathToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const data = input as {
+        points: Array<{ x: number; y: number }>
+        style: {
+          strokeWidth: number
+          lineCap?: CanvasLineCap
+          lineJoin?: CanvasLineJoin
+        }
+      }
+
+      return [
+        {
+          kind: 'erase-path',
+          points: data.points,
+          style: data.style,
+        },
+      ]
+    },
+  },
+  'draw-circle': {
+    schema: drawCircleToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const raw = input as
+        | {
+            center: { x: number; y: number }
+            radius: number
+            style: {
+              strokeWidth: number
+              lineCap?: CanvasLineCap
+              lineJoin?: CanvasLineJoin
+              color?: string
+            }
+          }
+        | {
+            centerXPercent: number
+            centerYPercent: number
+            radiusPercent: number
+            color: string
+            strokeWidth: number
+          }
+
+      if ('center' in raw) {
+        return [
+          {
+            kind: 'draw-circle',
+            center: raw.center,
+            radius: raw.radius,
+            style: raw.style,
+          },
+        ]
+      }
+
+      return [
+        {
+          kind: 'draw-circle',
+          center: {
+            x: raw.centerXPercent,
+            y: raw.centerYPercent,
+          },
+          radius: raw.radiusPercent,
+          style: {
+            strokeWidth: raw.strokeWidth,
+            color: raw.color,
+          },
+        },
+      ]
+    },
+  },
+  'erase-rect': {
+    schema: eraseRectToolSchema,
+    map(input): MagicCrayonCommandV1[] {
+      const raw = input as
+        | {
+            rect: {
+              x: number
+              y: number
+              width: number
+              height: number
+            }
+          }
+        | {
+            xPercent: number
+            yPercent: number
+            widthPercent: number
+            heightPercent: number
+          }
+
+      if ('rect' in raw) {
+        return [
+          {
+            kind: 'erase-rect',
+            rect: raw.rect,
+          },
+        ]
+      }
+
+      return [
+        {
+          kind: 'erase-rect',
+          rect: {
+            x: raw.xPercent,
+            y: raw.yPercent,
+            width: raw.widthPercent,
+            height: raw.heightPercent,
+          },
+        },
+      ]
+    },
+  },
+  clear: {
+    schema: noPayloadToolSchema,
+    map(): MagicCrayonCommandV1[] {
+      return [{ kind: 'clear' }]
+    },
+  },
+  undo: {
+    schema: noPayloadToolSchema,
+    map(): MagicCrayonCommandV1[] {
+      return [{ kind: 'undo' }]
+    },
+  },
+  redo: {
+    schema: noPayloadToolSchema,
+    map(): MagicCrayonCommandV1[] {
+      return [{ kind: 'redo' }]
+    },
+  },
+}
+
+const aiSdkAdapter: MagicCrayonVendorAdapter = {
+  vendor: 'ai-sdk',
+  parse(input: unknown): AdapterParseResult {
+    const value = asRecord(input)
+
+    if (!value) {
+      return {
+        ok: false,
+        reason: 'AI SDK payload must be an object.',
+      }
+    }
+
+    const directCommands = directCommandsSchema.safeParse(value.commands)
+
+    if (directCommands.success) {
+      return {
+        ok: true,
+        commands: directCommands.data,
+      }
+    }
+
+    const directCommand = directCommandSchema.safeParse(value.command)
+
+    if (directCommand.success) {
+      return {
+        ok: true,
+        commands: [directCommand.data],
+      }
+    }
+
+    const toolName = asString(value.toolName) ?? asString(value.tool)
+
+    if (!toolName) {
+      return {
+        ok: false,
+        reason: 'AI SDK payload must include commands, command, or toolName.',
+      }
+    }
+
+    const toolInput = value.input ?? value.args ?? value.arguments
+
+    if (toolName === 'magic-crayon.batch' || toolName === 'magic_crayon.batch') {
+      const batch = directCommandsSchema.safeParse(asRecord(toolInput)?.commands)
+
+      if (!batch.success) {
+        return {
+          ok: false,
+          reason: 'AI SDK batch payload must include a valid commands array.',
+        }
+      }
+
+      return {
+        ok: true,
+        commands: batch.data,
+      }
+    }
+
+    const normalized = normalizeName(toolName)
+    const spec = toolRegistry[normalized]
+
+    if (!spec) {
+      return {
+        ok: false,
+        reason: `Unsupported AI SDK tool call: ${toolName}`,
+      }
+    }
+
+    const parsed = spec.schema.safeParse(toolInput ?? {})
+
+    if (!parsed.success) {
+      return {
+        ok: false,
+        reason: `Invalid AI SDK payload for tool: ${toolName}`,
+      }
+    }
+
+    return {
+      ok: true,
+      commands: spec.map(parsed.data),
+    }
+  },
+}
+
+export { aiSdkAdapter }

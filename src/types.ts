@@ -1,10 +1,4 @@
 import type { Context2DMetaData, DrawingDocumentV1 } from './context2d.js'
-import type {
-  CommandApiStateV1,
-  CommandBatchResultV1,
-  CommandExecutionResultV1,
-  MagicCrayonCommandV1,
-} from './command-api.js'
 
 export type Serialization = 'blob' | 'dataurl'
 export type ColorPicker = 'crayon' | 'swatch' | 'input'
@@ -36,11 +30,4 @@ export type WidthChangeDetail = {
   eraserScale: number
   eraserWidth: number
   source: 'stroke' | 'eraser'
-}
-
-export type {
-  CommandApiStateV1,
-  CommandBatchResultV1,
-  CommandExecutionResultV1,
-  MagicCrayonCommandV1,
 }

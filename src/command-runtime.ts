@@ -23,6 +23,7 @@ type CommandRuntimeAdapterV1 = {
 const COMMAND_API_VERSION = 1 as const
 const SOURCE_SPACE_SIZE = 100
 const DEFAULT_COLOR = '#000000'
+const CIRCLE_SEGMENTS = 32
 
 const isFiniteNumber = (value: unknown): value is number => {
   return typeof value === 'number' && Number.isFinite(value)
@@ -94,8 +95,51 @@ const toNoop = (
 }
 
 const toStrokeCommand = (command: MagicCrayonCommandV1): StrokeCommand | null => {
-  if (command.kind !== 'draw-path' && command.kind !== 'erase-path') {
+  if (
+    command.kind !== 'draw-path' &&
+    command.kind !== 'erase-path' &&
+    command.kind !== 'draw-circle'
+  ) {
     return null
+  }
+
+  if (command.kind === 'draw-circle') {
+    if (!isNormalizedPoint(command.center)) {
+      return null
+    }
+
+    if (!isFiniteNumber(command.radius) || command.radius <= 0 || command.radius > 100) {
+      return null
+    }
+
+    if (!isFiniteNumber(command.style.strokeWidth) || command.style.strokeWidth <= 0) {
+      return null
+    }
+
+    const points: Array<{ x: number; y: number }> = []
+
+    for (let index = 0; index <= CIRCLE_SEGMENTS; index += 1) {
+      const theta = (index / CIRCLE_SEGMENTS) * Math.PI * 2
+      const x = command.center.x + Math.cos(theta) * command.radius
+      const y = command.center.y + Math.sin(theta) * command.radius
+
+      points.push({
+        x: Math.max(0, Math.min(100, x)),
+        y: Math.max(0, Math.min(100, y)),
+      })
+    }
+
+    return {
+      mode: 'draw',
+      strokeStyle: command.style.color ?? DEFAULT_COLOR,
+      lineCap: command.style.lineCap ?? 'round',
+      lineJoin: command.style.lineJoin ?? 'round',
+      lineWidth: command.style.strokeWidth,
+      compositing: Composites.DRAW,
+      sourceWidth: SOURCE_SPACE_SIZE,
+      sourceHeight: SOURCE_SPACE_SIZE,
+      points,
+    }
   }
 
   if (command.points.length < 2) {
@@ -145,13 +189,17 @@ const executeCommandV1 = (
   runtime: CommandRuntimeAdapterV1,
   command: MagicCrayonCommandV1,
 ): CommandExecutionResultV1 => {
-  if (command.kind === 'draw-path' || command.kind === 'erase-path') {
+  if (
+    command.kind === 'draw-path' ||
+    command.kind === 'erase-path' ||
+    command.kind === 'draw-circle'
+  ) {
     const stroke = toStrokeCommand(command)
 
     if (!stroke) {
       return toRejected(
         command,
-        'Path commands require at least two points in normalized range and a positive strokeWidth.',
+        'Draw and erase commands require valid normalized geometry and a positive strokeWidth.',
       )
     }
 

@@ -95,9 +95,10 @@ Command replay introduces redraw cost. Mitigate to avoid frame drops/jank:
 
 ## Deferred Work
 
-- Protocol-specific adapters (AI SDK, AGUI, etc.).
+- Vendor adapters (AI SDK, CopilotKit).
+- Protocol mapping adapter(s) (AGUI).
 
 ## Next Step
 
-Add protocol-specific adapters (AI SDK, AGUI, etc.) that map their command
-shape into the public v1 command contract.
+Expand protocol and vendor adapters that map external command shapes into the
+public v1 command contract.

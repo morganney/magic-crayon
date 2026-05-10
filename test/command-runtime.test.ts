@@ -75,8 +75,29 @@ describe('command runtime helpers', () => {
     const result = executeCommandV1(runtime, command)
 
     expect(result.status).toBe('rejected')
-    expect(result.reason).toContain('at least two points')
+    expect(result.reason).toContain('valid normalized geometry')
     expect(getCommandApiStateV1(runtime).document.strokes).toHaveLength(0)
+  })
+
+  it('applies draw-circle and converts it to a replayable stroke', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-circle',
+      center: { x: 50, y: 50 },
+      radius: 20,
+      style: {
+        strokeWidth: 4,
+        color: '#00aaff',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes).toHaveLength(1)
+    expect(state.document.strokes[0]?.points.length).toBeGreaterThan(10)
+    expect(state.document.strokes[0]?.mode).toBe('draw')
   })
 
   it('handles undo and redo with noop safeguards', () => {
