@@ -95,10 +95,9 @@ Command replay introduces redraw cost. Mitigate to avoid frame drops/jank:
 
 ## Deferred Work
 
-- Save payload document embedding (`save.detail.document`).
 - Protocol-specific adapters (AI SDK, AGUI, etc.).
 
 ## Next Step
 
-Add optional `save.detail.document` embedding so hosts can persist and restore
-command-native state without bitmap conversion.
+Add protocol-specific adapters (AI SDK, AGUI, etc.) that map their command
+shape into the public v1 command contract.

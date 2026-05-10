@@ -89,6 +89,7 @@ if (!customElements.get(TAG_NAME)) {
   control-style="icon"
   draw-cursor="crosshair"
   erase-cursor="cell"
+  save-document="off"
   width-controls="off"
   stroke-width="5"
   eraser-scale="1"
@@ -100,8 +101,8 @@ if (!customElements.get(TAG_NAME)) {
   const pad = document.getElementById('pad')
 
   pad.addEventListener('save', event => {
-    const { data, serialization, meta, timestamp } = event.detail
-    console.log({ data, serialization, meta, timestamp })
+    const { data, serialization, meta, timestamp, document } = event.detail
+    console.log({ data, serialization, meta, timestamp, document })
   })
 </script>
 ```
@@ -117,6 +118,7 @@ if (!customElements.get(TAG_NAME)) {
 - `control-style`: `text | icon` (default: `icon`)
 - `draw-cursor`: any valid CSS cursor string (default: `crosshair`)
 - `erase-cursor`: any valid CSS cursor string (default: `cell`)
+- `save-document`: `on | off` (default: `off`)
 - `width-controls`: `on | off` (default: `off`)
 - `stroke-width`: positive number (default: `5`)
 - `eraser-scale`: positive number (default: `1`)
@@ -132,6 +134,7 @@ if (!customElements.get(TAG_NAME)) {
 - `controlStyle: 'text' | 'icon'`
 - `drawCursor: string`
 - `eraseCursor: string`
+- `saveDocument: 'on' | 'off'`
 - `widthControls: 'on' | 'off'`
 - `strokeWidth: number` (must be positive)
 - `eraserScale: number` (must be positive)
@@ -146,7 +149,8 @@ if (!customElements.get(TAG_NAME)) {
 ## Events
 
 - `save`
-  - `detail`: `{ data, serialization, meta, timestamp }`
+  - `detail`: `{ data, serialization, meta, timestamp, document? }`
+  - `document` is included only when `save-document="on"`.
 - `undoavailabilitychange`
   - `detail`: `{ available, size }`
 - `redoavailabilitychange`

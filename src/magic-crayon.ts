@@ -14,6 +14,7 @@ import {
   assertColorPicker,
   assertControlStyle,
   assertEraserScale,
+  assertSaveDocument,
   assertSelectedCrayon,
   assertSerialization,
   assertStrokeWidth,
@@ -44,6 +45,7 @@ import type {
   CommandBatchResultV1,
   CommandApiStateV1,
   SaveDetail,
+  SaveDocument,
   SelectedCrayon,
   Serialization,
   WidthControls,
@@ -62,6 +64,7 @@ const DEFAULT_STROKE_WIDTH = 5
 const DEFAULT_ERASER_SCALE = 1
 const DEFAULT_DRAW_CURSOR = 'crosshair'
 const DEFAULT_ERASE_CURSOR = 'cell'
+const DEFAULT_SAVE_DOCUMENT: SaveDocument = 'off'
 const MAX_INPUT_RECENT_COLORS = 5
 const TAG_NAME = 'magic-crayon'
 const COLORS = [
@@ -94,6 +97,7 @@ class MagicCrayon extends HTMLElement {
     'control-style',
     'draw-cursor',
     'erase-cursor',
+    'save-document',
     'width-controls',
     'stroke-width',
     'eraser-scale',
@@ -134,6 +138,7 @@ class MagicCrayon extends HTMLElement {
   protected controlStyleValue: ControlStyle = DEFAULT_CONTROL_STYLE
   protected drawCursorValue: CursorStyle = DEFAULT_DRAW_CURSOR
   protected eraseCursorValue: CursorStyle = DEFAULT_ERASE_CURSOR
+  protected saveDocumentValue: SaveDocument = DEFAULT_SAVE_DOCUMENT
   protected widthControlsValue: WidthControls = DEFAULT_WIDTH_CONTROLS
   protected strokeWidthValue: number = DEFAULT_STROKE_WIDTH
   protected eraserScaleValue: number = DEFAULT_ERASER_SCALE
@@ -350,6 +355,20 @@ class MagicCrayon extends HTMLElement {
     }
   }
 
+  get saveDocument(): SaveDocument {
+    return this.saveDocumentValue
+  }
+
+  set saveDocument(value: SaveDocument) {
+    const next = assertSaveDocument(value)
+
+    this.saveDocumentValue = next
+
+    if (this.getAttribute('save-document') !== next) {
+      this.setAttribute('save-document', next)
+    }
+  }
+
   setAttribute(qualifiedName: string, value: string): void {
     if (qualifiedName === 'serialization') {
       assertSerialization(value)
@@ -377,6 +396,10 @@ class MagicCrayon extends HTMLElement {
 
     if (qualifiedName === 'control-style') {
       assertControlStyle(value)
+    }
+
+    if (qualifiedName === 'save-document') {
+      assertSaveDocument(value)
     }
 
     if (qualifiedName === 'width-controls') {
@@ -463,6 +486,12 @@ class MagicCrayon extends HTMLElement {
       this.setAttribute('erase-cursor', DEFAULT_ERASE_CURSOR)
     } else {
       this.eraseCursorValue = String(this.getAttribute('erase-cursor'))
+    }
+
+    if (!this.hasAttribute('save-document')) {
+      this.setAttribute('save-document', DEFAULT_SAVE_DOCUMENT)
+    } else {
+      this.saveDocumentValue = assertSaveDocument(this.getAttribute('save-document'))
     }
 
     if (!this.hasAttribute('width-controls')) {
@@ -598,6 +627,13 @@ class MagicCrayon extends HTMLElement {
     if (name === 'erase-cursor') {
       this.eraseCursorValue = newValue ?? DEFAULT_ERASE_CURSOR
       this.syncCanvasCursor()
+
+      return
+    }
+
+    if (name === 'save-document') {
+      this.saveDocumentValue =
+        newValue === null ? DEFAULT_SAVE_DOCUMENT : assertSaveDocument(newValue)
 
       return
     }
@@ -925,17 +961,22 @@ class MagicCrayon extends HTMLElement {
     const onSave = async () => {
       const ctx = this.requireContext2D()
       const data = await this.getDrawingData()
+      const detail: SaveDetail = {
+        data,
+        serialization: this.serializationValue,
+        meta: ctx.getMetaData(),
+        timestamp: new Date().toISOString(),
+      }
+
+      if (this.saveDocumentValue === 'on') {
+        detail.document = ctx.getDocument()
+      }
 
       this.dispatchEvent(
         new CustomEvent<SaveDetail>('save', {
           bubbles: true,
           composed: true,
-          detail: {
-            data,
-            serialization: this.serializationValue,
-            meta: ctx.getMetaData(),
-            timestamp: new Date().toISOString(),
-          },
+          detail,
         }),
       )
     }
@@ -1288,6 +1329,7 @@ export type {
   CommandBatchResultV1,
   CommandApiStateV1,
   SaveDetail,
+  SaveDocument,
   SelectedCrayon,
   Serialization,
   WidthControls,

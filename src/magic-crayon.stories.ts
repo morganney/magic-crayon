@@ -34,6 +34,9 @@ const canvasBackgroundOptions = [
 const controlStyleOptions = ['text', 'icon'] as const satisfies readonly NonNullable<
   StoryArgs['controlStyle']
 >[]
+const saveDocumentOptions = ['on', 'off'] as const satisfies readonly NonNullable<
+  StoryArgs['saveDocument']
+>[]
 const widthControlsOptions = ['on', 'off'] as const satisfies readonly NonNullable<
   StoryArgs['widthControls']
 >[]
@@ -58,6 +61,7 @@ const meta = {
     controlStyle: 'icon',
     drawCursor: 'crosshair',
     eraseCursor: 'cell',
+    saveDocument: 'off',
     widthControls: 'off',
     strokeWidth: 5,
     eraserScale: 1,
@@ -116,6 +120,12 @@ const meta = {
       description: 'CSS cursor value used while in erase mode.',
       control: { type: 'text' },
     },
+    saveDocument: {
+      name: 'save-document',
+      description: 'Include command document in save event payload.',
+      control: { type: 'inline-radio' },
+      options: saveDocumentOptions,
+    },
     widthControls: {
       name: 'width-controls',
       description: 'Toggle the built-in width sliders visibility.',
@@ -160,6 +170,7 @@ const meta = {
     controlStyle,
     drawCursor,
     eraseCursor,
+    saveDocument,
     widthControls,
     strokeWidth,
     eraserScale,
@@ -185,6 +196,7 @@ const meta = {
     element.setAttribute('control-style', controlStyle)
     element.setAttribute('draw-cursor', drawCursor)
     element.setAttribute('erase-cursor', eraseCursor)
+    element.setAttribute('save-document', saveDocument)
     element.setAttribute('width-controls', widthControls)
     element.setAttribute('stroke-width', String(strokeWidth))
     element.setAttribute('eraser-scale', String(eraserScale))

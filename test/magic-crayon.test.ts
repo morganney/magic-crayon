@@ -60,6 +60,10 @@ describe('magic-crayon', () => {
     }).toThrow(TypeError)
 
     expect(() => {
+      node.setAttribute('save-document', 'invalid')
+    }).toThrow(TypeError)
+
+    expect(() => {
       node.setAttribute('width-controls', 'invalid')
     }).toThrow(TypeError)
 
@@ -528,6 +532,72 @@ describe('magic-crayon', () => {
     expect(typeof event.detail.data).toBe('string')
     expect(event.detail.meta.backgroundColor).toBe('#ffffff')
     expect(typeof event.detail.timestamp).toBe('string')
+    expect(event.detail.document).toBeUndefined()
+  })
+
+  it('embeds document in save detail when save-document is on', async () => {
+    const node = createMagicCrayon()
+    const eventPromise = new Promise<CustomEvent<SaveDetail>>(resolve => {
+      node.addEventListener(
+        'save',
+        event => {
+          resolve(event as CustomEvent<SaveDetail>)
+        },
+        { once: true },
+      )
+    })
+    const context2d = (
+      node as unknown as {
+        context2d?: {
+          setDocument: (document: {
+            version: 1
+            strokes: Array<{
+              mode: 'draw' | 'erase'
+              strokeStyle: string
+              lineCap: CanvasLineCap
+              lineJoin: CanvasLineJoin
+              lineWidth: number
+              compositing: GlobalCompositeOperation
+              sourceWidth: number
+              sourceHeight: number
+              points: Array<{ x: number; y: number }>
+            }>
+          }) => void
+        }
+      }
+    ).context2d
+
+    expect(context2d).toBeTruthy()
+
+    node.saveDocument = 'on'
+    context2d?.setDocument({
+      version: 1,
+      strokes: [
+        {
+          mode: 'draw',
+          strokeStyle: '#000000',
+          lineCap: 'round',
+          lineJoin: 'round',
+          lineWidth: 4,
+          compositing: 'source-over',
+          sourceWidth: 100,
+          sourceHeight: 100,
+          points: [
+            { x: 10, y: 10 },
+            { x: 90, y: 90 },
+          ],
+        },
+      ],
+    })
+
+    node.shadowRoot
+      ?.querySelector<HTMLButtonElement>('[data-action="save"]')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    const event = await eventPromise
+
+    expect(event.detail.document?.version).toBe(1)
+    expect(event.detail.document?.strokes.length).toBeGreaterThan(0)
   })
 
   it('reports black background metadata when canvas-background is black', async () => {
