@@ -554,6 +554,97 @@ describe('aiSdkAdapter', () => {
     expect(result.commands[0]?.kind).toBe('fill-polygon')
   })
 
+  it('maps erase-path tool payloads', () => {
+    const result = aiSdkAdapter.parse({
+      toolName: 'magic-crayon.erase-path',
+      input: {
+        points: [
+          { x: 10, y: 10 },
+          { x: 20, y: 20 },
+        ],
+        style: {
+          strokeWidth: 2,
+          lineCap: 'round',
+          lineJoin: 'round',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('erase-path')
+  })
+
+  it('maps draw-rect percent payloads', () => {
+    const result = aiSdkAdapter.parse({
+      toolName: 'magic-crayon.draw-rect',
+      input: {
+        xPercent: 12,
+        yPercent: 18,
+        widthPercent: 28,
+        heightPercent: 20,
+        color: '#7a4a21',
+        strokeWidth: 3,
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]).toEqual({
+      kind: 'draw-rect',
+      rect: {
+        x: 12,
+        y: 18,
+        width: 28,
+        height: 20,
+      },
+      style: {
+        strokeWidth: 3,
+        color: '#7a4a21',
+      },
+    })
+  })
+
+  it('maps erase-rect canonical payloads', () => {
+    const result = aiSdkAdapter.parse({
+      toolName: 'magic-crayon.erase-rect',
+      input: {
+        rect: {
+          x: 10,
+          y: 12,
+          width: 30,
+          height: 22,
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('erase-rect')
+  })
+
+  it('maps clear, undo, and redo tool payloads', () => {
+    const clear = aiSdkAdapter.parse({ toolName: 'magic-crayon.clear', input: {} })
+    const undo = aiSdkAdapter.parse({ toolName: 'magic-crayon.undo', input: {} })
+    const redo = aiSdkAdapter.parse({ toolName: 'magic-crayon.redo', input: {} })
+
+    expect(clear.ok && clear.commands[0]?.kind).toBe('clear')
+    expect(undo.ok && undo.commands[0]?.kind).toBe('undo')
+    expect(redo.ok && redo.commands[0]?.kind).toBe('redo')
+  })
+
   it('maps erase-rect percent payloads', () => {
     const result = aiSdkAdapter.parse({
       tool: 'magic-crayon.erase-rect',

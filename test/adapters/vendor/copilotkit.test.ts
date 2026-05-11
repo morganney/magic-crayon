@@ -535,4 +535,117 @@ describe('copilotKitAdapter', () => {
 
     expect(result.commands[0]?.kind).toBe('fill-polygon')
   })
+
+  it('maps draw-path action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.draw-path',
+      args: {
+        points: [
+          { x: 10, y: 10 },
+          { x: 90, y: 90 },
+        ],
+        style: {
+          strokeWidth: 4,
+          color: '#aa3300',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('draw-path')
+  })
+
+  it('maps erase-path action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.erase-path',
+      args: {
+        points: [
+          { x: 10, y: 10 },
+          { x: 20, y: 20 },
+        ],
+        style: {
+          strokeWidth: 2,
+          lineCap: 'round',
+          lineJoin: 'round',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('erase-path')
+  })
+
+  it('maps draw-rect percent payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.draw-rect',
+      args: {
+        xPercent: 12,
+        yPercent: 18,
+        widthPercent: 28,
+        heightPercent: 20,
+        color: '#7a4a21',
+        strokeWidth: 3,
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]).toEqual({
+      kind: 'draw-rect',
+      rect: {
+        x: 12,
+        y: 18,
+        width: 28,
+        height: 20,
+      },
+      style: {
+        strokeWidth: 3,
+        color: '#7a4a21',
+      },
+    })
+  })
+
+  it('maps erase-rect percent payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.erase-rect',
+      args: {
+        xPercent: 10,
+        yPercent: 12,
+        widthPercent: 30,
+        heightPercent: 22,
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('erase-rect')
+  })
+
+  it('maps clear, undo, and redo action payloads', () => {
+    const clear = copilotKitAdapter.parse({ actionName: 'magic-crayon.clear', args: {} })
+    const undo = copilotKitAdapter.parse({ actionName: 'magic-crayon.undo', args: {} })
+    const redo = copilotKitAdapter.parse({ actionName: 'magic-crayon.redo', args: {} })
+
+    expect(clear.ok && clear.commands[0]?.kind).toBe('clear')
+    expect(undo.ok && undo.commands[0]?.kind).toBe('undo')
+    expect(redo.ok && redo.commands[0]?.kind).toBe('redo')
+  })
 })

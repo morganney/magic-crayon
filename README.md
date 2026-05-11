@@ -198,3 +198,5 @@ Canonical package paths:
 ## Development
 
 For local development, build, testing, and Storybook workflows, see [docs/development.md](docs/development.md).
+
+For the plan to move vendor adapters out of core package shipping, see [docs/adapter-packaging-migration.md](docs/adapter-packaging-migration.md).
