@@ -1,6 +1,6 @@
 import { asRecord, asString } from '../../command-mapper.js'
 import type { AdapterParseResult, MagicCrayonVendorAdapter } from '../../types.js'
-import type { MagicCrayonCommandV1 } from '../../../command-api.js'
+import type { MagicCrayonCommandV1 } from '../../../command/types.js'
 import {
   drawArcToolSchema,
   directCommandSchema,
@@ -531,3 +531,9 @@ const copilotKitAdapter: MagicCrayonVendorAdapter = {
 }
 
 export { copilotKitAdapter }
+export type {
+  AdapterParseFailure,
+  AdapterParseResult,
+  AdapterParseSuccess,
+  MagicCrayonVendorAdapter,
+} from '../../types.js'

@@ -125,7 +125,7 @@ export type RedoCommand = {
 
 export type ReplaceDocumentCommand = {
   kind: 'replace-document'
-  document: import('./context2d-document.js').DrawingDocumentV1
+  document: import('../context2d-document.js').DrawingDocumentV1
 }
 
 export type MagicCrayonCommandV1 =
@@ -165,5 +165,5 @@ export type CommandApiStateV1 = {
   version: CommandApiVersion
   undoSize: number
   redoSize: number
-  document: import('./context2d-document.js').DrawingDocumentV1
+  document: import('../context2d-document.js').DrawingDocumentV1
 }

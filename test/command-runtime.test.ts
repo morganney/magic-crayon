@@ -7,8 +7,8 @@ import {
   executeCommandV1,
   getCommandApiStateV1,
   type CommandRuntimeAdapterV1,
-} from '../src/command-runtime.js'
-import type { MagicCrayonCommandV1 } from '../src/command-api.js'
+} from '../src/command/runtime.js'
+import type { MagicCrayonCommandV1 } from '../src/command/types.js'
 
 const setupContextRuntime = () => {
   const canvas = document.createElement('canvas')

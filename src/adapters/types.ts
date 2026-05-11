@@ -1,4 +1,4 @@
-import type { MagicCrayonCommandV1 } from '../command-api.js'
+import type { MagicCrayonCommandV1 } from '../command/types.js'
 
 type AdapterParseSuccess = {
   ok: true

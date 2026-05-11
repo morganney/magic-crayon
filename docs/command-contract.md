@@ -78,6 +78,7 @@ Recommended host flow:
 - Runtime helper entry points are available in code as `executeCommandV1`,
   `executeCommandBatchV1`, `getCommandApiStateV1`, and
   `createContext2DCommandRuntime`.
-- Package import path for runtime helpers: `magic-crayon/command-runtime`.
+- Package import path for command types: `magic-crayon/command/types`.
+- Package import path for runtime helpers: `magic-crayon/command/runtime`.
 - Adapter-specific gaps are surfaced as `rejected` results with reason text
   (for example, `erase-rect` requires adapter support).

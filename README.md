@@ -188,7 +188,12 @@ Type declarations are published with the package and mapped via `exports`.
 ## Command API
 
 The versioned public command contract for agent integrations is documented in
-[docs/command-api.md](docs/command-api.md).
+[docs/command-contract.md](docs/command-contract.md).
+
+Canonical package paths:
+
+- `magic-crayon/command/types`
+- `magic-crayon/command/runtime`
 
 ## Development
 

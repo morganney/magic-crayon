@@ -1,4 +1,4 @@
-import type { MagicCrayonCommandV1 } from '../command-api.js'
+import type { MagicCrayonCommandV1 } from '../command/types.js'
 import { commandListSchema, commandSchema, toCommand } from './schemas.js'
 
 const asRecord = (value: unknown): Record<string, unknown> | null => {
