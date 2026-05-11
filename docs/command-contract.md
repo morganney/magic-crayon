@@ -21,26 +21,15 @@ Commands use normalized canvas coordinates to support cross-device replay.
 
 - Contract version: `1`
 - TypeScript contract types: `MagicCrayonCommandV1`, `CommandExecutionResultV1`, `CommandBatchResultV1`, `CommandApiStateV1`
+- Canonical command definitions live in `src/command/types.ts`.
 
 ## Commands (v1)
 
-- `draw-path`
-  - Draw a stroke through ordered points.
-  - Payload: `points`, `style` (`strokeWidth`, optional `lineCap`, optional `lineJoin`, optional `color`).
-- `erase-path`
-  - Erase through ordered points.
-  - Payload: `points`, `style` (`strokeWidth`, optional `lineCap`, optional `lineJoin`).
-- `erase-rect`
-  - Erase a rectangular area.
-  - Payload: `rect` (`x`, `y`, `width`, `height`).
-- `clear`
-  - Clear drawing surface and command history.
-- `undo`
-  - Undo most recent command in undo history.
-- `redo`
-  - Re-apply most recent command in redo history.
-- `replace-document`
-  - Replace current drawing with a full `DrawingDocumentV1`.
+This document intentionally does not duplicate the full command union.
+
+- Source of truth for command kinds and payload shapes: `MagicCrayonCommandV1` in `src/command/types.ts`.
+- This avoids docs drift when command types evolve.
+- This page documents only cross-cutting contract guarantees and runtime semantics.
 
 ## Execution Result
 

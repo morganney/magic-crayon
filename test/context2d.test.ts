@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { Composites, Context2D, Mode, Serializations } from '../src/context2d.js'
+import type { StrokeCommand } from '../src/context2d-document.js'
 
 const ONE_PIXEL_PNG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO8p0xQAAAAASUVORK5CYII='
@@ -124,6 +125,57 @@ describe('Context2D', () => {
     expect(redoSizes.length).toBeGreaterThan(0)
 
     drawing.unregisterListeners(onUndo, onRedo)
+  })
+
+  it('undoes and redoes appendStrokes as a single history entry', () => {
+    const { drawing } = setup()
+    const strokes: StrokeCommand[] = [
+      {
+        mode: 'draw',
+        strokeStyle: '#111111',
+        lineCap: 'round',
+        lineJoin: 'round',
+        lineWidth: 4,
+        compositing: 'source-over',
+        sourceWidth: 200,
+        sourceHeight: 100,
+        points: [
+          { x: 10, y: 20 },
+          { x: 30, y: 20 },
+        ],
+      },
+      {
+        mode: 'draw',
+        strokeStyle: '#111111',
+        lineCap: 'round',
+        lineJoin: 'round',
+        lineWidth: 4,
+        compositing: 'source-over',
+        sourceWidth: 200,
+        sourceHeight: 100,
+        points: [
+          { x: 10, y: 24 },
+          { x: 30, y: 24 },
+        ],
+      },
+    ]
+
+    drawing.appendStrokes(strokes)
+
+    expect(drawing.getDocument().strokes).toHaveLength(2)
+    expect(drawing.undoStackSize).toBe(1)
+
+    drawing.applyUndo()
+
+    expect(drawing.getDocument().strokes).toHaveLength(0)
+    expect(drawing.undoStackSize).toBe(0)
+    expect(drawing.redoStackSize).toBe(1)
+
+    drawing.applyRedo()
+
+    expect(drawing.getDocument().strokes).toHaveLength(2)
+    expect(drawing.undoStackSize).toBe(1)
+    expect(drawing.redoStackSize).toBe(0)
   })
 
   it('supports bounding replay command history with commandLimit', () => {

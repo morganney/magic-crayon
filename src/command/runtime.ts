@@ -16,6 +16,7 @@ type CommandRuntimeAdapterV1 = {
   getDocument(): DrawingDocumentV1
   setDocument(document: DrawingDocumentV1): void
   appendStroke?(stroke: StrokeCommand): void
+  appendStrokes?(strokes: StrokeCommand[]): void
   clear(): void
   undo(): void
   redo(): void
@@ -49,6 +50,12 @@ const appendStrokes = (
 
   if (strokes.length === 1) {
     appendStroke(runtime, strokes[0])
+
+    return
+  }
+
+  if (runtime.appendStrokes) {
+    runtime.appendStrokes(strokes)
 
     return
   }
@@ -95,7 +102,7 @@ const executeCommandV1 = (
     if (!strokes || strokes.length === 0) {
       return toRejected(
         command,
-        'Draw and erase commands require valid normalized geometry and a positive strokeWidth.',
+        'Stroke commands require valid normalized geometry and a positive strokeWidth.',
       )
     }
 
@@ -185,6 +192,7 @@ const createContext2DCommandRuntime = (context2d: Context2D): CommandRuntimeAdap
     getDocument: () => context2d.getDocument(),
     setDocument: document => context2d.setDocument(document),
     appendStroke: stroke => context2d.appendStroke(stroke),
+    appendStrokes: strokes => context2d.appendStrokes(strokes),
     clear: () => context2d.clear(),
     undo: () => context2d.applyUndo(),
     redo: () => context2d.applyRedo(),

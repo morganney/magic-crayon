@@ -112,7 +112,7 @@ describe('command runtime helpers', () => {
     expect(strokes).toHaveLength(1)
   })
 
-  it('uses appendStroke fast path for multi-stroke fill operations', () => {
+  it('uses appendStrokes atomic path for multi-stroke fill operations', () => {
     const strokes: Array<{
       mode: 'draw' | 'erase'
       strokeStyle: string
@@ -125,6 +125,7 @@ describe('command runtime helpers', () => {
       points: Array<{ x: number; y: number }>
     }> = []
     let appendCalls = 0
+    let appendBatchCalls = 0
     let setDocumentCalls = 0
     const runtime: CommandRuntimeAdapterV1 = {
       getDocument: () => ({ version: 1, strokes }),
@@ -135,6 +136,10 @@ describe('command runtime helpers', () => {
       appendStroke: stroke => {
         appendCalls += 1
         strokes.push(stroke)
+      },
+      appendStrokes: nextStrokes => {
+        appendBatchCalls += 1
+        strokes.push(...nextStrokes)
       },
       clear: () => {
         strokes.splice(0, strokes.length)
@@ -160,8 +165,49 @@ describe('command runtime helpers', () => {
     })
 
     expect(result.status).toBe('applied')
-    expect(appendCalls).toBeGreaterThan(1)
+    expect(appendBatchCalls).toBe(1)
+    expect(appendCalls).toBe(0)
     expect(setDocumentCalls).toBe(0)
+  })
+
+  it('treats fill commands as one undo step when adapter supports appendStrokes', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-rect',
+      rect: {
+        x: 20,
+        y: 20,
+        width: 30,
+        height: 20,
+      },
+      style: {
+        strokeWidth: 4,
+        color: '#44aa44',
+      },
+    })
+
+    const afterFill = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(afterFill.document.strokes.length).toBeGreaterThan(2)
+    expect(afterFill.undoSize).toBe(1)
+
+    const undoResult = executeCommandV1(runtime, { kind: 'undo' })
+    const afterUndo = getCommandApiStateV1(runtime)
+
+    expect(undoResult.status).toBe('applied')
+    expect(afterUndo.document.strokes).toHaveLength(0)
+    expect(afterUndo.undoSize).toBe(0)
+    expect(afterUndo.redoSize).toBe(1)
+
+    const redoResult = executeCommandV1(runtime, { kind: 'redo' })
+    const afterRedo = getCommandApiStateV1(runtime)
+
+    expect(redoResult.status).toBe('applied')
+    expect(afterRedo.document.strokes.length).toBeGreaterThan(2)
+    expect(afterRedo.undoSize).toBe(1)
+    expect(afterRedo.redoSize).toBe(0)
   })
 
   it('rejects invalid path input without changing state', () => {

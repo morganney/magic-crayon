@@ -330,6 +330,8 @@ const toolRegistry: Record<string, ToolSpec> = {
         }
         style: {
           strokeWidth: number
+          lineCap?: CanvasLineCap
+          lineJoin?: CanvasLineJoin
           color?: string
         }
       }
@@ -351,6 +353,8 @@ const toolRegistry: Record<string, ToolSpec> = {
         radius: number
         style: {
           strokeWidth: number
+          lineCap?: CanvasLineCap
+          lineJoin?: CanvasLineJoin
           color?: string
         }
       }
@@ -372,6 +376,8 @@ const toolRegistry: Record<string, ToolSpec> = {
         points: Array<{ x: number; y: number }>
         style: {
           strokeWidth: number
+          lineCap?: CanvasLineCap
+          lineJoin?: CanvasLineJoin
           color?: string
         }
       }

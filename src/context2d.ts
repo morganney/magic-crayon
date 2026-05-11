@@ -469,6 +469,21 @@ class Context2D {
     this.drawCommand(next)
   }
 
+  appendStrokes(strokes: StrokeCommand[]): void {
+    if (strokes.length === 0) {
+      return
+    }
+
+    const next = strokes.map(stroke => cloneCommand(stroke))
+
+    this.history.clearRedo()
+    this.history.addBatch(next)
+
+    for (const stroke of next) {
+      this.drawCommand(stroke)
+    }
+  }
+
   getDocument(): DrawingDocumentV1 {
     return this.history.getDocument()
   }

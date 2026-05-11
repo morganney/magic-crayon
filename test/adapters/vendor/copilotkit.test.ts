@@ -511,6 +511,40 @@ describe('copilotKitAdapter', () => {
     expect(result.commands[0]?.kind).toBe('fill-circle')
   })
 
+  it('maps fill-circle style lineCap and lineJoin when provided', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.fill-circle',
+      args: {
+        center: { x: 50, y: 50 },
+        radius: 15,
+        style: {
+          strokeWidth: 3,
+          color: '#aa4444',
+          lineCap: 'round',
+          lineJoin: 'bevel',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]).toEqual({
+      kind: 'fill-circle',
+      center: { x: 50, y: 50 },
+      radius: 15,
+      style: {
+        strokeWidth: 3,
+        color: '#aa4444',
+        lineCap: 'round',
+        lineJoin: 'bevel',
+      },
+    })
+  })
+
   it('maps fill-polygon action payloads', () => {
     const result = copilotKitAdapter.parse({
       actionName: 'magic-crayon.fill-polygon',

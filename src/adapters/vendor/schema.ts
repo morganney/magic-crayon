@@ -138,6 +138,8 @@ const fillRectToolSchema = z.object({
   }),
   style: z.object({
     strokeWidth: z.number().finite().positive(),
+    lineCap: z.enum(['butt', 'round', 'square']).optional(),
+    lineJoin: z.enum(['bevel', 'round', 'miter']).optional(),
     color: z.string().min(1).optional(),
   }),
 })
@@ -147,6 +149,8 @@ const fillCircleToolSchema = z.object({
   radius: z.number().finite().positive().max(100),
   style: z.object({
     strokeWidth: z.number().finite().positive(),
+    lineCap: z.enum(['butt', 'round', 'square']).optional(),
+    lineJoin: z.enum(['bevel', 'round', 'miter']).optional(),
     color: z.string().min(1).optional(),
   }),
 })
@@ -155,6 +159,8 @@ const fillPolygonToolSchema = z.object({
   points: z.array(z.object({ x: z.number(), y: z.number() })).min(3),
   style: z.object({
     strokeWidth: z.number().finite().positive(),
+    lineCap: z.enum(['butt', 'round', 'square']).optional(),
+    lineJoin: z.enum(['bevel', 'round', 'miter']).optional(),
     color: z.string().min(1).optional(),
   }),
 })
