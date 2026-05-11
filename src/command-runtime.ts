@@ -28,6 +28,8 @@ const CIRCLE_SEGMENTS = 32
 const DEFAULT_BEZIER_SEGMENTS = 24
 const ELLIPSE_SEGMENTS = 48
 const DEFAULT_ARC_SEGMENTS = 24
+const MIN_FILL_SCANLINE_WIDTH = 0.2
+const MAX_FILL_STROKES = 512
 
 const isFiniteNumber = (value: unknown): value is number => {
   return typeof value === 'number' && Number.isFinite(value)
@@ -190,20 +192,27 @@ const toFillRectStrokeCommands = (
   rect: NormalizedRect,
   lineWidth: number,
   strokeStyle: string,
-): StrokeCommand[] => {
+  lineCap: CanvasLineCap,
+  lineJoin: CanvasLineJoin,
+): StrokeCommand[] | null => {
   const strokes: StrokeCommand[] = []
+  const effectiveLineWidth = Math.max(lineWidth, MIN_FILL_SCANLINE_WIDTH)
   const top = rect.y
   const bottom = rect.y + rect.height
   const left = rect.x
   const right = rect.x + rect.width
 
-  for (let y = top; y <= bottom; y += lineWidth) {
+  for (let y = top; y <= bottom; y += effectiveLineWidth) {
+    if (strokes.length >= MAX_FILL_STROKES) {
+      return null
+    }
+
     strokes.push({
       mode: 'draw',
       strokeStyle,
-      lineCap: 'butt',
-      lineJoin: 'round',
-      lineWidth,
+      lineCap,
+      lineJoin,
+      lineWidth: effectiveLineWidth,
       compositing: Composites.DRAW,
       sourceWidth: SOURCE_SPACE_SIZE,
       sourceHeight: SOURCE_SPACE_SIZE,
@@ -222,12 +231,19 @@ const toFillCircleStrokeCommands = (
   radius: number,
   lineWidth: number,
   strokeStyle: string,
-): StrokeCommand[] => {
+  lineCap: CanvasLineCap,
+  lineJoin: CanvasLineJoin,
+): StrokeCommand[] | null => {
   const strokes: StrokeCommand[] = []
+  const effectiveLineWidth = Math.max(lineWidth, MIN_FILL_SCANLINE_WIDTH)
   const top = Math.max(0, center.y - radius)
   const bottom = Math.min(100, center.y + radius)
 
-  for (let y = top; y <= bottom; y += lineWidth) {
+  for (let y = top; y <= bottom; y += effectiveLineWidth) {
+    if (strokes.length >= MAX_FILL_STROKES) {
+      return null
+    }
+
     const dy = y - center.y
     const dx = Math.sqrt(Math.max(0, radius * radius - dy * dy))
     const left = Math.max(0, center.x - dx)
@@ -236,9 +252,9 @@ const toFillCircleStrokeCommands = (
     strokes.push({
       mode: 'draw',
       strokeStyle,
-      lineCap: 'butt',
-      lineJoin: 'round',
-      lineWidth,
+      lineCap,
+      lineJoin,
+      lineWidth: effectiveLineWidth,
       compositing: Composites.DRAW,
       sourceWidth: SOURCE_SPACE_SIZE,
       sourceHeight: SOURCE_SPACE_SIZE,
@@ -256,12 +272,28 @@ const toFillPolygonStrokeCommands = (
   polygon: NormalizedPoint[],
   lineWidth: number,
   strokeStyle: string,
-): StrokeCommand[] => {
+  lineCap: CanvasLineCap,
+  lineJoin: CanvasLineJoin,
+): StrokeCommand[] | null => {
   const strokes: StrokeCommand[] = []
-  const minY = Math.max(0, Math.min(...polygon.map(point => point.y)))
-  const maxY = Math.min(100, Math.max(...polygon.map(point => point.y)))
+  const effectiveLineWidth = Math.max(lineWidth, MIN_FILL_SCANLINE_WIDTH)
+  let minY = Number.POSITIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
 
-  for (let y = minY; y <= maxY; y += lineWidth) {
+  for (const point of polygon) {
+    if (point.y < minY) {
+      minY = point.y
+    }
+
+    if (point.y > maxY) {
+      maxY = point.y
+    }
+  }
+
+  const boundedMinY = Math.max(0, minY)
+  const boundedMaxY = Math.min(100, maxY)
+
+  for (let y = boundedMinY; y <= boundedMaxY; y += effectiveLineWidth) {
     const intersections: number[] = []
 
     for (let index = 0; index < polygon.length; index += 1) {
@@ -284,12 +316,16 @@ const toFillPolygonStrokeCommands = (
     intersections.sort((first, second) => first - second)
 
     for (let index = 0; index + 1 < intersections.length; index += 2) {
+      if (strokes.length >= MAX_FILL_STROKES) {
+        return null
+      }
+
       strokes.push({
         mode: 'draw',
         strokeStyle,
-        lineCap: 'butt',
-        lineJoin: 'round',
-        lineWidth,
+        lineCap,
+        lineJoin,
+        lineWidth: effectiveLineWidth,
         compositing: Composites.DRAW,
         sourceWidth: SOURCE_SPACE_SIZE,
         sourceHeight: SOURCE_SPACE_SIZE,
@@ -623,6 +659,8 @@ const toStrokeCommands = (command: MagicCrayonCommandV1): StrokeCommand[] | null
       command.rect,
       command.style.strokeWidth,
       command.style.color ?? DEFAULT_COLOR,
+      command.style.lineCap ?? 'butt',
+      command.style.lineJoin ?? 'round',
     )
   }
 
@@ -644,6 +682,8 @@ const toStrokeCommands = (command: MagicCrayonCommandV1): StrokeCommand[] | null
       command.radius,
       command.style.strokeWidth,
       command.style.color ?? DEFAULT_COLOR,
+      command.style.lineCap ?? 'butt',
+      command.style.lineJoin ?? 'round',
     )
   }
 
@@ -664,6 +704,8 @@ const toStrokeCommands = (command: MagicCrayonCommandV1): StrokeCommand[] | null
       command.points,
       command.style.strokeWidth,
       command.style.color ?? DEFAULT_COLOR,
+      command.style.lineCap ?? 'butt',
+      command.style.lineJoin ?? 'round',
     )
   }
 
@@ -725,6 +767,14 @@ const appendStrokes = (
 
   if (strokes.length === 1) {
     appendStroke(runtime, strokes[0])
+
+    return
+  }
+
+  if (runtime.appendStroke) {
+    for (const stroke of strokes) {
+      runtime.appendStroke(stroke)
+    }
 
     return
   }
