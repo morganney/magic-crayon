@@ -48,6 +48,131 @@ describe('command mapper helpers', () => {
     })
   })
 
+  it('parseCommandFromKindAndPayload parses draw-line normalized kind', () => {
+    const command = parseCommandFromKindAndPayload('  DRAW_LINE  ', {
+      start: { x: 10, y: 20 },
+      end: { x: 90, y: 80 },
+      style: {
+        strokeWidth: 3,
+        color: '#3366cc',
+      },
+    })
+
+    expect(command).toEqual({
+      kind: 'draw-line',
+      start: { x: 10, y: 20 },
+      end: { x: 90, y: 80 },
+      style: {
+        strokeWidth: 3,
+        color: '#3366cc',
+      },
+    })
+  })
+
+  it('parseCommandFromKindAndPayload parses draw-rect normalized kind', () => {
+    const command = parseCommandFromKindAndPayload('  DRAW_RECT  ', {
+      rect: {
+        x: 10,
+        y: 20,
+        width: 30,
+        height: 40,
+      },
+      style: {
+        strokeWidth: 2,
+        color: '#884422',
+      },
+    })
+
+    expect(command).toEqual({
+      kind: 'draw-rect',
+      rect: {
+        x: 10,
+        y: 20,
+        width: 30,
+        height: 40,
+      },
+      style: {
+        strokeWidth: 2,
+        color: '#884422',
+      },
+    })
+  })
+
+  it('parseCommandFromKindAndPayload parses draw-polygon normalized kind', () => {
+    const command = parseCommandFromKindAndPayload('  DRAW_POLYGON  ', {
+      points: [
+        { x: 20, y: 20 },
+        { x: 40, y: 20 },
+        { x: 30, y: 40 },
+      ],
+      closed: true,
+      style: {
+        strokeWidth: 3,
+        color: '#4488aa',
+      },
+    })
+
+    expect(command).toEqual({
+      kind: 'draw-polygon',
+      points: [
+        { x: 20, y: 20 },
+        { x: 40, y: 20 },
+        { x: 30, y: 40 },
+      ],
+      closed: true,
+      style: {
+        strokeWidth: 3,
+        color: '#4488aa',
+      },
+    })
+  })
+
+  it('parseCommandFromKindAndPayload parses draw-arc normalized kind', () => {
+    const command = parseCommandFromKindAndPayload('  DRAW_ARC  ', {
+      center: { x: 50, y: 50 },
+      radius: 20,
+      startAngleDegrees: 0,
+      endAngleDegrees: 180,
+      style: {
+        strokeWidth: 3,
+        color: '#ff8800',
+      },
+      segments: 12,
+    })
+
+    expect(command).toEqual({
+      kind: 'draw-arc',
+      center: { x: 50, y: 50 },
+      radius: 20,
+      startAngleDegrees: 0,
+      endAngleDegrees: 180,
+      style: {
+        strokeWidth: 3,
+        color: '#ff8800',
+      },
+      segments: 12,
+    })
+  })
+
+  it('parseCommandFromKindAndPayload parses fill-rect normalized kind', () => {
+    const command = parseCommandFromKindAndPayload('  FILL_RECT  ', {
+      rect: { x: 20, y: 20, width: 30, height: 20 },
+      style: {
+        strokeWidth: 4,
+        color: '#44aa44',
+      },
+    })
+
+    expect(command).toEqual({
+      kind: 'fill-rect',
+      rect: { x: 20, y: 20, width: 30, height: 20 },
+      style: {
+        strokeWidth: 4,
+        color: '#44aa44',
+      },
+    })
+  })
+
   it('parseCommandFromKindAndPayload returns null for unsupported kind', () => {
     const command = parseCommandFromKindAndPayload('download', {
       document: { version: 1, strokes: [] },

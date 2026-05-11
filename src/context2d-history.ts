@@ -7,11 +7,12 @@ import {
 
 type CustomNumberEventListener = (evt: CustomEvent<number>) => void
 const UNDO_LIMIT = 5
+type StrokeCommandBatch = StrokeCommand[]
 
 class Context2DHistory {
   protected readonly commandLimit: number
-  protected readonly undo = new FixedStack<StrokeCommand>(UNDO_LIMIT)
-  protected readonly redo = new FixedStack<StrokeCommand>(UNDO_LIMIT)
+  protected readonly undo = new FixedStack<StrokeCommandBatch>(UNDO_LIMIT)
+  protected readonly redo = new FixedStack<StrokeCommandBatch>(UNDO_LIMIT)
   protected commands: StrokeCommand[] = []
 
   constructor(commandLimit: number = Number.POSITIVE_INFINITY) {
@@ -43,28 +44,58 @@ class Context2DHistory {
   }
 
   add(command: StrokeCommand): void {
-    this.commands.push(cloneCommand(command))
-    this.commands = this.limitCommands(this.commands)
+    this.addBatch([command])
+  }
 
-    this.undo.push(cloneCommand(command))
+  addBatch(commands: StrokeCommand[]): void {
+    if (commands.length === 0) {
+      return
+    }
+
+    const batch = commands.map(command => cloneCommand(command))
+    const nextCommands = this.limitCommands([
+      ...this.commands,
+      ...batch.map(command => cloneCommand(command)),
+    ])
+    const retainedBatch = nextCommands.slice(
+      Math.max(0, nextCommands.length - batch.length),
+    )
+
+    if (retainedBatch.length === 0) {
+      return
+    }
+
+    this.commands = nextCommands
+
+    this.undo.push(retainedBatch.map(command => cloneCommand(command)))
   }
 
   applyUndo(): StrokeCommand {
-    const command = this.undo.pop()
+    const batch = this.undo.pop()
 
-    this.redo.push(command)
-    this.commands.pop()
+    for (let index = 0; index < batch.length; index += 1) {
+      this.commands.pop()
+    }
 
-    return command
+    this.redo.push(batch.map(command => cloneCommand(command)))
+
+    return cloneCommand(batch[batch.length - 1] as StrokeCommand)
   }
 
   applyRedo(): StrokeCommand {
-    const command = this.redo.pop()
+    const batch = this.redo.pop()
+    const nextCommands = this.limitCommands([
+      ...this.commands,
+      ...batch.map(command => cloneCommand(command)),
+    ])
+    const retainedBatch = nextCommands.slice(
+      Math.max(0, nextCommands.length - batch.length),
+    )
 
-    this.commands.push(cloneCommand(command))
-    this.undo.push(cloneCommand(command))
+    this.commands = nextCommands
+    this.undo.push(retainedBatch.map(command => cloneCommand(command)))
 
-    return command
+    return cloneCommand(retainedBatch[retainedBatch.length - 1] as StrokeCommand)
   }
 
   clear(): void {
@@ -96,7 +127,7 @@ class Context2DHistory {
     this.redo.clear()
 
     for (const stroke of this.commands) {
-      this.undo.push(cloneCommand(stroke))
+      this.undo.push([cloneCommand(stroke)])
     }
   }
 

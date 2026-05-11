@@ -255,4 +255,431 @@ describe('copilotKitAdapter', () => {
       },
     ])
   })
+
+  it('maps draw-line action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.draw-line',
+      args: {
+        start: { x: 10, y: 20 },
+        end: { x: 90, y: 80 },
+        style: {
+          strokeWidth: 3,
+          color: '#3366cc',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('draw-line')
+  })
+
+  it('maps draw-rect action payloads with canonical fields', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.draw-rect',
+      args: {
+        rect: {
+          x: 12,
+          y: 18,
+          width: 28,
+          height: 20,
+        },
+        style: {
+          strokeWidth: 3,
+          color: '#7a4a21',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands).toEqual([
+      {
+        kind: 'draw-rect',
+        rect: {
+          x: 12,
+          y: 18,
+          width: 28,
+          height: 20,
+        },
+        style: {
+          strokeWidth: 3,
+          color: '#7a4a21',
+        },
+      },
+    ])
+  })
+
+  it('maps draw-bezier action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.draw-bezier',
+      args: {
+        start: { x: 10, y: 80 },
+        control1: { x: 30, y: 20 },
+        control2: { x: 70, y: 20 },
+        end: { x: 90, y: 80 },
+        style: {
+          strokeWidth: 4,
+          color: '#0066cc',
+        },
+        segments: 18,
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands).toEqual([
+      {
+        kind: 'draw-bezier',
+        start: { x: 10, y: 80 },
+        control1: { x: 30, y: 20 },
+        control2: { x: 70, y: 20 },
+        end: { x: 90, y: 80 },
+        style: {
+          strokeWidth: 4,
+          color: '#0066cc',
+        },
+        segments: 18,
+      },
+    ])
+  })
+
+  it('maps draw-ellipse action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.draw-ellipse',
+      args: {
+        center: { x: 50, y: 48 },
+        radiusX: 18,
+        radiusY: 11,
+        style: {
+          strokeWidth: 3,
+          color: '#11aa88',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands).toEqual([
+      {
+        kind: 'draw-ellipse',
+        center: { x: 50, y: 48 },
+        radiusX: 18,
+        radiusY: 11,
+        style: {
+          strokeWidth: 3,
+          color: '#11aa88',
+        },
+      },
+    ])
+  })
+
+  it('maps draw-polygon action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.draw-polygon',
+      args: {
+        points: [
+          { x: 20, y: 20 },
+          { x: 40, y: 20 },
+          { x: 30, y: 42 },
+        ],
+        closed: true,
+        style: {
+          strokeWidth: 2,
+          color: '#4477cc',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands).toEqual([
+      {
+        kind: 'draw-polygon',
+        points: [
+          { x: 20, y: 20 },
+          { x: 40, y: 20 },
+          { x: 30, y: 42 },
+        ],
+        closed: true,
+        style: {
+          strokeWidth: 2,
+          color: '#4477cc',
+        },
+      },
+    ])
+  })
+
+  it('maps draw-arc action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.draw-arc',
+      args: {
+        center: { x: 50, y: 50 },
+        radius: 20,
+        startAngleDegrees: 0,
+        endAngleDegrees: 180,
+        style: {
+          strokeWidth: 3,
+          color: '#ff8800',
+        },
+        segments: 12,
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands).toEqual([
+      {
+        kind: 'draw-arc',
+        center: { x: 50, y: 50 },
+        radius: 20,
+        startAngleDegrees: 0,
+        endAngleDegrees: 180,
+        style: {
+          strokeWidth: 3,
+          color: '#ff8800',
+        },
+        segments: 12,
+      },
+    ])
+  })
+
+  it('maps fill-rect action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.fill-rect',
+      args: {
+        rect: { x: 20, y: 20, width: 30, height: 20 },
+        style: {
+          strokeWidth: 4,
+          color: '#44aa44',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('fill-rect')
+  })
+
+  it('maps fill-circle action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.fill-circle',
+      args: {
+        center: { x: 50, y: 50 },
+        radius: 15,
+        style: {
+          strokeWidth: 3,
+          color: '#aa4444',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('fill-circle')
+  })
+
+  it('maps fill-circle style lineCap and lineJoin when provided', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.fill-circle',
+      args: {
+        center: { x: 50, y: 50 },
+        radius: 15,
+        style: {
+          strokeWidth: 3,
+          color: '#aa4444',
+          lineCap: 'round',
+          lineJoin: 'bevel',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]).toEqual({
+      kind: 'fill-circle',
+      center: { x: 50, y: 50 },
+      radius: 15,
+      style: {
+        strokeWidth: 3,
+        color: '#aa4444',
+        lineCap: 'round',
+        lineJoin: 'bevel',
+      },
+    })
+  })
+
+  it('maps fill-polygon action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.fill-polygon',
+      args: {
+        points: [
+          { x: 20, y: 20 },
+          { x: 40, y: 20 },
+          { x: 30, y: 42 },
+        ],
+        style: {
+          strokeWidth: 3,
+          color: '#4488cc',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('fill-polygon')
+  })
+
+  it('maps draw-path action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.draw-path',
+      args: {
+        points: [
+          { x: 10, y: 10 },
+          { x: 90, y: 90 },
+        ],
+        style: {
+          strokeWidth: 4,
+          color: '#aa3300',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('draw-path')
+  })
+
+  it('maps erase-path action payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.erase-path',
+      args: {
+        points: [
+          { x: 10, y: 10 },
+          { x: 20, y: 20 },
+        ],
+        style: {
+          strokeWidth: 2,
+          lineCap: 'round',
+          lineJoin: 'round',
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('erase-path')
+  })
+
+  it('maps draw-rect percent payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.draw-rect',
+      args: {
+        xPercent: 12,
+        yPercent: 18,
+        widthPercent: 28,
+        heightPercent: 20,
+        color: '#7a4a21',
+        strokeWidth: 3,
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]).toEqual({
+      kind: 'draw-rect',
+      rect: {
+        x: 12,
+        y: 18,
+        width: 28,
+        height: 20,
+      },
+      style: {
+        strokeWidth: 3,
+        color: '#7a4a21',
+      },
+    })
+  })
+
+  it('maps erase-rect percent payloads', () => {
+    const result = copilotKitAdapter.parse({
+      actionName: 'magic-crayon.erase-rect',
+      args: {
+        xPercent: 10,
+        yPercent: 12,
+        widthPercent: 30,
+        heightPercent: 22,
+      },
+    })
+
+    expect(result.ok).toBe(true)
+
+    if (!result.ok) {
+      throw new Error('Expected a successful parse result.')
+    }
+
+    expect(result.commands[0]?.kind).toBe('erase-rect')
+  })
+
+  it('maps clear, undo, and redo action payloads', () => {
+    const clear = copilotKitAdapter.parse({ actionName: 'magic-crayon.clear', args: {} })
+    const undo = copilotKitAdapter.parse({ actionName: 'magic-crayon.undo', args: {} })
+    const redo = copilotKitAdapter.parse({ actionName: 'magic-crayon.redo', args: {} })
+
+    expect(clear.ok && clear.commands[0]?.kind).toBe('clear')
+    expect(undo.ok && undo.commands[0]?.kind).toBe('undo')
+    expect(redo.ok && redo.commands[0]?.kind).toBe('redo')
+  })
 })

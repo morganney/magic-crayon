@@ -1,6 +1,6 @@
 {
   "name": "magic-crayon",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "type": "module",
   "description": "An HTML custom element for using a crayon to draw on a canvas and serialize as a blob or data URL.",
   "homepage": "https://github.com/morganney/magic-crayon#readme",
@@ -19,21 +19,21 @@
       "types": "./dist/magic-crayon.d.ts",
       "import": "./dist/magic-crayon.js"
     },
-    "./command-api": {
-      "types": "./dist/command-api.d.ts",
-      "import": "./dist/command-api.js"
+    "./command/types": {
+      "types": "./dist/command/types.d.ts",
+      "import": "./dist/command/types.js"
     },
-    "./command-runtime": {
-      "types": "./dist/command-runtime.d.ts",
-      "import": "./dist/command-runtime.js"
+    "./command/runtime": {
+      "types": "./dist/command/runtime.d.ts",
+      "import": "./dist/command/runtime.js"
     },
     "./adapters/ai-sdk": {
-      "types": "./dist/adapters/ai-sdk.d.ts",
-      "import": "./dist/adapters-ai-sdk.js"
+      "types": "./dist/adapters/vendor/ai-sdk/adapter.d.ts",
+      "import": "./dist/adapters/vendor/ai-sdk/adapter.js"
     },
     "./adapters/copilotkit": {
-      "types": "./dist/adapters/copilotkit.d.ts",
-      "import": "./dist/adapters-copilotkit.js"
+      "types": "./dist/adapters/vendor/copilotkit/adapter.d.ts",
+      "import": "./dist/adapters/vendor/copilotkit/adapter.js"
     },
     "./defined": {
       "types": "./dist/defined.d.ts",

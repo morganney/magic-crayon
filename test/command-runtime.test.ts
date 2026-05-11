@@ -7,8 +7,8 @@ import {
   executeCommandV1,
   getCommandApiStateV1,
   type CommandRuntimeAdapterV1,
-} from '../src/command-runtime.js'
-import type { MagicCrayonCommandV1 } from '../src/command-api.js'
+} from '../src/command/runtime.js'
+import type { MagicCrayonCommandV1 } from '../src/command/types.js'
 
 const setupContextRuntime = () => {
   const canvas = document.createElement('canvas')
@@ -112,6 +112,104 @@ describe('command runtime helpers', () => {
     expect(strokes).toHaveLength(1)
   })
 
+  it('uses appendStrokes atomic path for multi-stroke fill operations', () => {
+    const strokes: Array<{
+      mode: 'draw' | 'erase'
+      strokeStyle: string
+      lineCap: CanvasLineCap
+      lineJoin: CanvasLineJoin
+      lineWidth: number
+      compositing: GlobalCompositeOperation
+      sourceWidth: number
+      sourceHeight: number
+      points: Array<{ x: number; y: number }>
+    }> = []
+    let appendCalls = 0
+    let appendBatchCalls = 0
+    let setDocumentCalls = 0
+    const runtime: CommandRuntimeAdapterV1 = {
+      getDocument: () => ({ version: 1, strokes }),
+      setDocument: document => {
+        setDocumentCalls += 1
+        strokes.splice(0, strokes.length, ...document.strokes)
+      },
+      appendStroke: stroke => {
+        appendCalls += 1
+        strokes.push(stroke)
+      },
+      appendStrokes: nextStrokes => {
+        appendBatchCalls += 1
+        strokes.push(...nextStrokes)
+      },
+      clear: () => {
+        strokes.splice(0, strokes.length)
+      },
+      undo: () => undefined,
+      redo: () => undefined,
+      getUndoSize: () => strokes.length,
+      getRedoSize: () => 0,
+    }
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-rect',
+      rect: {
+        x: 20,
+        y: 20,
+        width: 30,
+        height: 20,
+      },
+      style: {
+        strokeWidth: 4,
+        color: '#44aa44',
+      },
+    })
+
+    expect(result.status).toBe('applied')
+    expect(appendBatchCalls).toBe(1)
+    expect(appendCalls).toBe(0)
+    expect(setDocumentCalls).toBe(0)
+  })
+
+  it('treats fill commands as one undo step when adapter supports appendStrokes', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-rect',
+      rect: {
+        x: 20,
+        y: 20,
+        width: 30,
+        height: 20,
+      },
+      style: {
+        strokeWidth: 4,
+        color: '#44aa44',
+      },
+    })
+
+    const afterFill = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(afterFill.document.strokes.length).toBeGreaterThan(2)
+    expect(afterFill.undoSize).toBe(1)
+
+    const undoResult = executeCommandV1(runtime, { kind: 'undo' })
+    const afterUndo = getCommandApiStateV1(runtime)
+
+    expect(undoResult.status).toBe('applied')
+    expect(afterUndo.document.strokes).toHaveLength(0)
+    expect(afterUndo.undoSize).toBe(0)
+    expect(afterUndo.redoSize).toBe(1)
+
+    const redoResult = executeCommandV1(runtime, { kind: 'redo' })
+    const afterRedo = getCommandApiStateV1(runtime)
+
+    expect(redoResult.status).toBe('applied')
+    expect(afterRedo.document.strokes.length).toBeGreaterThan(2)
+    expect(afterRedo.undoSize).toBe(1)
+    expect(afterRedo.redoSize).toBe(0)
+  })
+
   it('rejects invalid path input without changing state', () => {
     const { runtime } = setupContextRuntime()
     const command: MagicCrayonCommandV1 = {
@@ -148,6 +246,312 @@ describe('command runtime helpers', () => {
     expect(state.document.strokes).toHaveLength(1)
     expect(state.document.strokes[0]?.points.length).toBeGreaterThan(10)
     expect(state.document.strokes[0]?.mode).toBe('draw')
+  })
+
+  it('applies draw-line and records a two-point stroke', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-line',
+      start: { x: 10, y: 20 },
+      end: { x: 90, y: 80 },
+      style: {
+        strokeWidth: 3,
+        color: '#3366cc',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes[0]?.points).toEqual([
+      { x: 10, y: 20 },
+      { x: 90, y: 80 },
+    ])
+  })
+
+  it('applies draw-rect and records a closed outline stroke', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-rect',
+      rect: {
+        x: 20,
+        y: 30,
+        width: 40,
+        height: 20,
+      },
+      style: {
+        strokeWidth: 3,
+        color: '#884422',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes).toHaveLength(1)
+    expect(state.document.strokes[0]?.points).toEqual([
+      { x: 20, y: 30 },
+      { x: 60, y: 30 },
+      { x: 60, y: 50 },
+      { x: 20, y: 50 },
+      { x: 20, y: 30 },
+    ])
+  })
+
+  it('applies draw-bezier and records generated curve points', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-bezier',
+      start: { x: 10, y: 80 },
+      control1: { x: 30, y: 20 },
+      control2: { x: 70, y: 20 },
+      end: { x: 90, y: 80 },
+      style: {
+        strokeWidth: 4,
+        color: '#0066cc',
+      },
+      segments: 16,
+    })
+
+    const state = getCommandApiStateV1(runtime)
+    const points = state.document.strokes[0]?.points ?? []
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes).toHaveLength(1)
+    expect(points).toHaveLength(17)
+    expect(points[0]).toEqual({ x: 10, y: 80 })
+    expect(points[points.length - 1]).toEqual({ x: 90, y: 80 })
+  })
+
+  it('applies draw-ellipse and records sampled ellipse points', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-ellipse',
+      center: { x: 50, y: 50 },
+      radiusX: 20,
+      radiusY: 10,
+      style: {
+        strokeWidth: 3,
+        color: '#22aa88',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+    const points = state.document.strokes[0]?.points ?? []
+
+    expect(result.status).toBe('applied')
+    expect(points.length).toBeGreaterThan(10)
+    expect(points[0]?.x).toBeCloseTo(70)
+    expect(points[0]?.y).toBeCloseTo(50)
+  })
+
+  it('applies draw-polygon and closes by default', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-polygon',
+      points: [
+        { x: 20, y: 20 },
+        { x: 40, y: 20 },
+        { x: 30, y: 40 },
+      ],
+      style: {
+        strokeWidth: 2,
+        color: '#8844cc',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+    const points = state.document.strokes[0]?.points ?? []
+
+    expect(result.status).toBe('applied')
+    expect(points).toEqual([
+      { x: 20, y: 20 },
+      { x: 40, y: 20 },
+      { x: 30, y: 40 },
+      { x: 20, y: 20 },
+    ])
+  })
+
+  it('applies draw-arc and records sampled arc points', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'draw-arc',
+      center: { x: 50, y: 50 },
+      radius: 20,
+      startAngleDegrees: 0,
+      endAngleDegrees: 180,
+      style: {
+        strokeWidth: 3,
+        color: '#ff8800',
+      },
+      segments: 12,
+    })
+
+    const state = getCommandApiStateV1(runtime)
+    const points = state.document.strokes[0]?.points ?? []
+
+    expect(result.status).toBe('applied')
+    expect(points).toHaveLength(13)
+    expect(points[0]?.x).toBeCloseTo(70)
+    expect(points[0]?.y).toBeCloseTo(50)
+    expect(points[points.length - 1]?.x).toBeCloseTo(30)
+    expect(points[points.length - 1]?.y).toBeCloseTo(50)
+  })
+
+  it('applies fill-rect by emitting multiple horizontal fill strokes', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-rect',
+      rect: { x: 20, y: 20, width: 30, height: 20 },
+      style: {
+        strokeWidth: 4,
+        color: '#44aa44',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes.length).toBeGreaterThan(2)
+    expect(state.document.strokes[0]?.points[0]?.x).toBeCloseTo(20)
+    expect(state.document.strokes[0]?.points[1]?.x).toBeCloseTo(50)
+  })
+
+  it('applies fill-circle by emitting scanline-based fill strokes', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-circle',
+      center: { x: 50, y: 50 },
+      radius: 15,
+      style: {
+        strokeWidth: 3,
+        color: '#aa4444',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes.length).toBeGreaterThan(4)
+  })
+
+  it('applies fill-polygon by emitting interior scanline strokes', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-polygon',
+      points: [
+        { x: 20, y: 20 },
+        { x: 50, y: 20 },
+        { x: 65, y: 45 },
+        { x: 35, y: 60 },
+      ],
+      style: {
+        strokeWidth: 3,
+        color: '#4488cc',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes.length).toBeGreaterThan(4)
+  })
+
+  it('bounds fill stroke emission when strokeWidth is extremely small', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-rect',
+      rect: { x: 0, y: 0, width: 100, height: 100 },
+      style: {
+        strokeWidth: 0.01,
+        color: '#22aa88',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+    const firstStroke = state.document.strokes[0]
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes.length).toBeLessThanOrEqual(512)
+    expect(firstStroke?.lineWidth).toBeCloseTo(0.2)
+  })
+
+  it('bounds fill-circle stroke emission when strokeWidth is extremely small', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-circle',
+      center: { x: 50, y: 50 },
+      radius: 45,
+      style: {
+        strokeWidth: 0.01,
+        color: '#bb6622',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+    const firstStroke = state.document.strokes[0]
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes.length).toBeLessThanOrEqual(512)
+    expect(firstStroke?.lineWidth).toBeCloseTo(0.2)
+  })
+
+  it('bounds fill-polygon stroke emission when strokeWidth is extremely small', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-polygon',
+      points: [
+        { x: 5, y: 5 },
+        { x: 95, y: 5 },
+        { x: 95, y: 95 },
+        { x: 5, y: 95 },
+      ],
+      style: {
+        strokeWidth: 0.01,
+        color: '#2255bb',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+    const firstStroke = state.document.strokes[0]
+
+    expect(result.status).toBe('applied')
+    expect(state.document.strokes.length).toBeLessThanOrEqual(512)
+    expect(firstStroke?.lineWidth).toBeCloseTo(0.2)
+  })
+
+  it('honors lineCap and lineJoin for fill command strokes', () => {
+    const { runtime } = setupContextRuntime()
+
+    const result = executeCommandV1(runtime, {
+      kind: 'fill-rect',
+      rect: { x: 15, y: 15, width: 20, height: 10 },
+      style: {
+        strokeWidth: 2,
+        color: '#1188aa',
+        lineCap: 'round',
+        lineJoin: 'bevel',
+      },
+    })
+
+    const state = getCommandApiStateV1(runtime)
+    const firstStroke = state.document.strokes[0]
+
+    expect(result.status).toBe('applied')
+    expect(firstStroke?.lineCap).toBe('round')
+    expect(firstStroke?.lineJoin).toBe('bevel')
   })
 
   it('handles undo and redo with noop safeguards', () => {

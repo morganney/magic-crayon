@@ -12,7 +12,7 @@ import {
   executeCommandBatchV1,
   executeCommandV1,
   getCommandApiStateV1,
-} from './command-runtime.js'
+} from './command/runtime.js'
 import {
   assertAnchor,
   assertBoundary,
@@ -57,7 +57,7 @@ import type {
   CommandApiStateV1,
   CommandExecutionResultV1,
   MagicCrayonCommandV1,
-} from './command-api.js'
+} from './command/types.js'
 
 const DEFAULT_SERIALIZATION: Serialization = 'blob'
 const DEFAULT_COLOR_PICKER: ColorPicker = 'crayon'
